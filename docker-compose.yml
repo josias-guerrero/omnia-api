@@ -1,0 +1,32 @@
+networks:
+  omnia_net:
+    driver: bridge
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: omnia-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB:-omniadb}
+      POSTGRES_USER: ${DB_USERNAME:-omniauser}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-omniapass}
+
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - omnia_pgdata:/var/lib/postgresql/data
+    networks:
+      - omnia_net
+
+  redis:
+    image: redis:7
+    container_name: omnia_redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    networks:
+      - omnia_net
+
+volumes:
+  omnia_pgdata:
