@@ -11,6 +11,13 @@ public class Category {
   private final LocalDateTime createdAt;
   private LocalDateTime updatedAt;
 
+  public Category(String name, String description) {
+    this.name = name;
+    this.description = description;
+    this.createdAt = LocalDateTime.now();
+    this.updatedAt = LocalDateTime.now();
+  }
+
   public Category(CategoryId id, String name, String description) {
     this.id = id;
     this.name = validateName(name);
