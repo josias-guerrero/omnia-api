@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 import org.josiasguerrero.products.domain.valueobject.BrandId;
 
 public class Brand {
-  private final BrandId id;
+  private BrandId id;
   private String name;
   private final LocalDateTime createdAt;
   private LocalDateTime updatedAt;
@@ -22,6 +22,12 @@ public class Brand {
     this.name = name;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
+  }
+
+  public Brand(String name) {
+    this.name = name;
+    this.createdAt = LocalDateTime.now();
+    this.updatedAt = LocalDateTime.now();
   }
 
   public void updateName(String newName) {

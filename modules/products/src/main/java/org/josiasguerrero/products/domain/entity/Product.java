@@ -96,10 +96,50 @@ public class Product {
 
   public void setBarcode(Barcode barcode) {
     this.barcode = barcode;
+    this.updatedAt = LocalDateTime.now();
   }
 
   public void assignToBrand(BrandId brandId) {
     this.brandId = brandId;
+    this.updatedAt = LocalDateTime.now();
+  }
+
+  public void assignToCategory(CategoryId categoryId) {
+    this.categoryIds.add(categoryId);
+    this.updatedAt = LocalDateTime.now();
+  }
+
+  public void addProperty(PropertyId propertyId, PropertyValue propertyValue) {
+    this.properties.putIfAbsent(propertyId, propertyValue);
+    this.updatedAt = LocalDateTime.now();
+  }
+
+  public void changeSku(Sku sku) {
+    this.sku = sku;
+    this.updatedAt = LocalDateTime.now();
+  }
+
+  public void rename(String name) {
+    if (name == null || name.isBlank()) {
+      throw new IllegalArgumentException("Name cannot be empty");
+    }
+    if (name.length() > 100) {
+      throw new IllegalArgumentException("Name cannot exceed 100 characters");
+    }
+    this.name = name;
+    this.updatedAt = LocalDateTime.now();
+  }
+
+  public void changeDescription(String description) {
+    this.description = description;
+    this.updatedAt = LocalDateTime.now();
+  }
+
+  public void updatePricing(Money newCost, Money newPrice) {
+    validatePricing(newCost, newPrice);
+    this.cost = newCost;
+    this.price = newPrice;
+    this.updatedAt = LocalDateTime.now();
   }
 
   public boolean hasStock() {
@@ -184,35 +224,4 @@ public class Product {
     return properties;
   }
 
-  public void assignToCategory(CategoryId categoryId) {
-    this.categoryIds.add(categoryId);
-  }
-
-  public void addProperty(PropertyId propertyId, PropertyValue propertyValue) {
-    this.properties.putIfAbsent(propertyId, propertyValue);
-  }
-
-  public void changeSku(Sku sku) {
-    this.sku = sku;
-  }
-
-  public void rename(String name) {
-    if (name == null || name.isBlank()) {
-      throw new IllegalArgumentException("Name cannot be empty");
-    }
-    if (name.length() > 100) {
-      throw new IllegalArgumentException("Name cannot exceed 100 characters");
-    }
-    this.name = name;
-  }
-
-  public void changeDescription(String description) {
-    this.description = description;
-  }
-
-  public void updatePricing(Money newCost, Money newPrice) {
-    validatePricing(newCost, newPrice);
-    this.cost = newCost;
-    this.price = newPrice;
-  }
 }
