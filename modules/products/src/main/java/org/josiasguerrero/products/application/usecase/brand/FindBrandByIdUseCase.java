@@ -7,6 +7,9 @@ import org.josiasguerrero.products.domain.exception.BrandNotFoundException;
 import org.josiasguerrero.products.domain.port.BrandRepository;
 import org.josiasguerrero.products.domain.valueobject.BrandId;
 
+import lombok.AllArgsConstructor;
+
+@AllArgsConstructor
 public class FindBrandByIdUseCase {
 
   private BrandRepository brandRepository;

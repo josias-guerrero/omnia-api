@@ -13,7 +13,7 @@ import org.josiasguerrero.products.domain.valueobject.ProductId;
 import lombok.AllArgsConstructor;
 
 @AllArgsConstructor
-public class UpdateProductCategories {
+public class UpdateProductCategoriesUseCase {
 
   private final ProductRepository productRepository;
   private final CategoryRepository categoryRepository;

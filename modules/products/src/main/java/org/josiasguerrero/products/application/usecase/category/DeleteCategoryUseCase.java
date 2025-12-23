@@ -10,7 +10,14 @@ public class DeleteCategoryUseCase {
 
   private CategoryRepository categoryRepository;
 
-  public void execute(CategoryId id) {
+  public void execute(Integer catId) {
+    CategoryId id = CategoryId.from(catId);
+
+    if (categoryRepository.hasProducts(id)) {
+      throw new IllegalStateException("Cannot delete category with associated products. "
+          + "remove products from this category first.");
+    }
+
     categoryRepository.delete(id);
   }
 }

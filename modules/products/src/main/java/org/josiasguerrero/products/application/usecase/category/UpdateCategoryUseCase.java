@@ -35,6 +35,8 @@ public class UpdateCategoryUseCase {
       category.updateDescription(request.description());
     }
 
+    categoryRepository.save(category);
+
   }
 
 }
