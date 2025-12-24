@@ -10,7 +10,8 @@ public class DeleteProductUseCase {
 
   private ProductRepository productRepository;
 
-  public void execute(ProductId productId) {
-    productRepository.delete(productId);
+  public void execute(String productId) {
+    ProductId id = ProductId.from(productId);
+    productRepository.delete(id);
   }
 }

@@ -110,7 +110,7 @@ public class Product {
   }
 
   public void addProperty(PropertyId propertyId, PropertyValue propertyValue) {
-    this.properties.putIfAbsent(propertyId, propertyValue);
+    this.properties.put(propertyId, propertyValue);
     this.updatedAt = LocalDateTime.now();
   }
 

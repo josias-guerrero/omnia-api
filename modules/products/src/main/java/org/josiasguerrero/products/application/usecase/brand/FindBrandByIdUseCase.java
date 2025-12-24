@@ -14,12 +14,13 @@ public class FindBrandByIdUseCase {
 
   private BrandRepository brandRepository;
 
-  public BrandResponse execute(BrandId brandId) {
+  public BrandResponse execute(Integer brandId) {
+    BrandId id = BrandId.from(brandId);
     if (brandId == null) {
       throw new IllegalArgumentException("Brand id must not be null");
     }
-    Brand brand = brandRepository.findById(brandId)
-        .orElseThrow(() -> new BrandNotFoundException(brandId));
+    Brand brand = brandRepository.findById(id)
+        .orElseThrow(() -> new BrandNotFoundException(id));
     return BrandMapper.toResponse(brand);
   }
 }

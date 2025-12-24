@@ -14,13 +14,14 @@ public class FindProductByIdUseCase {
 
   ProductRepository productRepository;
 
-  public ProductResponse execute(ProductId productId) {
+  public ProductResponse execute(String productId) {
+    ProductId id = ProductId.from(productId);
     if (productId == null) {
       throw new IllegalArgumentException("Product id must not be null");
     }
 
-    Product product = productRepository.findById(productId)
-        .orElseThrow(() -> new ProductNotFoundException(productId));
+    Product product = productRepository.findById(id)
+        .orElseThrow(() -> new ProductNotFoundException(id));
 
     return ProductApplicationMapper.toResponse(product);
 

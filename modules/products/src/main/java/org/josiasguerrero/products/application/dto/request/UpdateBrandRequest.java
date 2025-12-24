@@ -1,8 +1,7 @@
 package org.josiasguerrero.products.application.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
-public record UpdateBrandRequest(@NotNull Integer id, @NotBlank @Size(max = 100) String name) {
+public record UpdateBrandRequest(@NotBlank @Size(max = 100) String name) {
 }
