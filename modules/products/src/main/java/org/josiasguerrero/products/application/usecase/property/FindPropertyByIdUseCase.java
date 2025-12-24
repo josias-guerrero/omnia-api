@@ -17,7 +17,7 @@ public class FindPropertyByIdUseCase {
       throw new IllegalArgumentException("Property ID must not be null");
     }
     PropertyId id = PropertyId.from(propId);
-    return repository.findById(id).map(PropertyMapper::toRseponse)
+    return repository.findById(id).map(PropertyMapper::toResponse)
         .orElseThrow(() -> new PropertyNotFoundException(id));
   }
 }

@@ -1,6 +1,6 @@
 package org.josiasguerrero.products.application.usecase.property;
 
-import org.josiasguerrero.products.application.dto.request.PropertyRequest;
+import org.josiasguerrero.products.application.dto.request.CreatePropertyRequest;
 import org.josiasguerrero.products.application.dto.response.PropertyResponse;
 import org.josiasguerrero.products.application.mapper.PropertyMapper;
 import org.josiasguerrero.products.domain.entity.Property;
@@ -15,7 +15,7 @@ public class CreatePropertyUseCase {
   private PropertyRepository repository;
   private DtoValidator validator;
 
-  public PropertyResponse execute(PropertyRequest request) {
+  public PropertyResponse execute(CreatePropertyRequest request) {
     validator.validate(request);
 
     if (repository.existsByName(request.name())) {
@@ -26,7 +26,7 @@ public class CreatePropertyUseCase {
 
     repository.save(property);
 
-    return PropertyMapper.toRseponse(property);
+    return PropertyMapper.toResponse(property);
   }
 
 }

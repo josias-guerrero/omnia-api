@@ -1,6 +1,8 @@
 package org.josiasguerrero.products.application.usecase.property;
 
 import org.josiasguerrero.products.application.dto.request.UpdatePropertyRequest;
+import org.josiasguerrero.products.application.dto.response.PropertyResponse;
+import org.josiasguerrero.products.application.mapper.PropertyMapper;
 import org.josiasguerrero.products.domain.entity.Property;
 import org.josiasguerrero.products.domain.exception.DuplicatePropertyNameException;
 import org.josiasguerrero.products.domain.exception.PropertyNotFoundException;
@@ -15,14 +17,14 @@ public class UpdatePropertyUseCase {
   private PropertyRepository repository;
   private DtoValidator validator;
 
-  public void exceute(UpdatePropertyRequest request) {
+  public PropertyResponse exceute(Integer propId, UpdatePropertyRequest request) {
     validator.validate(request);
 
     if (!repository.existsByName(request.name())) {
       throw new DuplicatePropertyNameException(request.name());
     }
 
-    PropertyId id = PropertyId.from(request.id());
+    PropertyId id = PropertyId.from(propId);
 
     Property property = repository.findById(id).orElseThrow(() -> new PropertyNotFoundException(id));
 
@@ -31,6 +33,7 @@ public class UpdatePropertyUseCase {
     }
 
     repository.save(property);
+    return PropertyMapper.toResponse(property);
   }
 
 }
