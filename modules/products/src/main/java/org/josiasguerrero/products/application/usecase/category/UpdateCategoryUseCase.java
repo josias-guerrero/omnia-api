@@ -1,6 +1,8 @@
 package org.josiasguerrero.products.application.usecase.category;
 
 import org.josiasguerrero.products.application.dto.request.UpdateCategoryRequest;
+import org.josiasguerrero.products.application.dto.response.CategoryResponse;
+import org.josiasguerrero.products.application.mapper.CategoryMapper;
 import org.josiasguerrero.products.domain.entity.Category;
 import org.josiasguerrero.products.domain.exception.CategoryNotFoundException;
 import org.josiasguerrero.products.domain.exception.DuplicateCategoryNameException;
@@ -16,14 +18,15 @@ public class UpdateCategoryUseCase {
   private CategoryRepository categoryRepository;
   private DtoValidator dtoValidator;
 
-  public void execute(UpdateCategoryRequest request) {
+  public CategoryResponse execute(Integer id, UpdateCategoryRequest request) {
     dtoValidator.validate(request);
 
     if (categoryRepository.existsByName(request.name())) {
       throw new DuplicateCategoryNameException(request.name());
     }
 
-    CategoryId categoryId = CategoryId.from(request.id());
+    CategoryId categoryId = CategoryId.from(id);
+
     Category category = categoryRepository.findById(categoryId)
         .orElseThrow(() -> new CategoryNotFoundException(categoryId));
 
@@ -36,6 +39,8 @@ public class UpdateCategoryUseCase {
     }
 
     categoryRepository.save(category);
+
+    return CategoryMapper.toResponse(category);
 
   }
 

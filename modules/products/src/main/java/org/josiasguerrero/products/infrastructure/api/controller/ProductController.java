@@ -1,5 +1,6 @@
 package org.josiasguerrero.products.infrastructure.api.controller;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -8,6 +9,7 @@ import org.josiasguerrero.products.application.dto.request.UpdateProductRequest;
 import org.josiasguerrero.products.application.dto.response.ProductResponse;
 import org.josiasguerrero.products.application.usecase.Product.CreateProductUseCase;
 import org.josiasguerrero.products.application.usecase.Product.DeleteProductUseCase;
+import org.josiasguerrero.products.application.usecase.Product.FindAllProductsUseCase;
 import org.josiasguerrero.products.application.usecase.Product.FindProductByIdUseCase;
 import org.josiasguerrero.products.application.usecase.Product.UpdateProductCategoriesUseCase;
 import org.josiasguerrero.products.application.usecase.Product.UpdateProductPropertiesUseCase;
@@ -36,6 +38,7 @@ public class ProductController {
   private final UpdateProductUseCase updateProductUseCase;
   private final UpdateProductCategoriesUseCase updateProductCategoriesUseCase;
   private final UpdateProductPropertiesUseCase updateProductPropertiesUseCase;
+  private final FindAllProductsUseCase findAllProductsUseCase;
 
   @PostMapping
   public ResponseEntity<ProductResponse> create(@Valid @RequestBody CreateProductRequest request) {
@@ -52,6 +55,12 @@ public class ProductController {
   @GetMapping("/{id}")
   public ResponseEntity<ProductResponse> findById(@PathVariable String id) {
     ProductResponse response = findProductByIdUseCase.execute(id);
+    return ResponseEntity.ok(response);
+  }
+
+  @GetMapping
+  public ResponseEntity<List<ProductResponse>> findAll() {
+    List<ProductResponse> response = findAllProductsUseCase.execute();
     return ResponseEntity.ok(response);
   }
 

@@ -1,10 +1,13 @@
 package org.josiasguerrero.products.infrastructure.api.controller;
 
+import java.util.List;
+
 import org.josiasguerrero.products.application.dto.request.BrandRequest;
 import org.josiasguerrero.products.application.dto.request.UpdateBrandRequest;
 import org.josiasguerrero.products.application.dto.response.BrandResponse;
 import org.josiasguerrero.products.application.usecase.brand.CreateBrandUseCase;
 import org.josiasguerrero.products.application.usecase.brand.DeleteBrandUseCase;
+import org.josiasguerrero.products.application.usecase.brand.FindAllBrandsUseCase;
 import org.josiasguerrero.products.application.usecase.brand.FindBrandByIdUseCase;
 import org.josiasguerrero.products.application.usecase.brand.FindBrandByNameUseCase;
 import org.josiasguerrero.products.application.usecase.brand.UpdateBrandUseCase;
@@ -31,6 +34,7 @@ public class BrandController {
   private final FindBrandByIdUseCase findBrandByIdUseCase;
   private final FindBrandByNameUseCase findBrandByNameUseCase;
   private final UpdateBrandUseCase updateBrandUseCase;
+  private final FindAllBrandsUseCase findAllBrandsUseCase;
 
   @PostMapping
   public ResponseEntity<BrandResponse> create(@Valid @RequestBody BrandRequest request) {
@@ -42,6 +46,12 @@ public class BrandController {
   public ResponseEntity<Void> delete(@PathVariable Integer id) {
     deleteBrandUseCase.execute(id);
     return ResponseEntity.noContent().build();
+  }
+
+  @GetMapping
+  public ResponseEntity<List<BrandResponse>> findAll() {
+    List<BrandResponse> response = findAllBrandsUseCase.execute();
+    return ResponseEntity.ok(response);
   }
 
   @GetMapping("/{id}")

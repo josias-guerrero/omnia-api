@@ -1,6 +1,6 @@
 package org.josiasguerrero.products.application.dto.request;
 
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
-public record UpdateCategoryRequest(@NotNull Integer id, String name, String description) {
+public record UpdateCategoryRequest(@Size(max = 50) String name, @Size(max = 100) String description) {
 }

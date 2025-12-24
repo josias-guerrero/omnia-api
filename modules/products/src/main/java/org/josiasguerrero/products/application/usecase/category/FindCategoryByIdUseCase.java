@@ -14,7 +14,9 @@ public class FindCategoryByIdUseCase {
 
   private CategoryRepository categoryRepository;
 
-  public CategoryResponse execute(CategoryId id) {
+  public CategoryResponse execute(Integer catId) {
+    CategoryId id = CategoryId.from(catId);
+
     if (id == null) {
       throw new IllegalArgumentException("Category Id must not be null");
     }
