@@ -58,7 +58,7 @@ public record Money(BigDecimal amount, Currency currency) {
 
   private void validateSameCurrency(Money other) {
 
-    if (this.currency.equals(other.currency)) {
+    if (!this.currency.equals(other.currency)) {
       throw new IllegalArgumentException("Cannot operate with different currencies: " +
           this.currency + " and " + other.currency);
 

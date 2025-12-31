@@ -19,7 +19,7 @@ public class CategoryPersistenceMapper {
 
   public CategoryJpaEntity toJpaEntity(Category domain) {
     return CategoryJpaEntity.builder()
-        .id(domain.getId().value())
+        .id(domain.getId() != null ? domain.getId().value() : null)
         .name(domain.getName())
         .description(domain.getDescription())
         .createdAt(domain.getCreatedAt())

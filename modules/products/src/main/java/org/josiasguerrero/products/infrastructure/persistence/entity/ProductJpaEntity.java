@@ -70,7 +70,8 @@ public class ProductJpaEntity {
 
   @ManyToMany(fetch = FetchType.LAZY)
   @JoinTable(name = "product_category", joinColumns = @JoinColumn(name = "product_id"), inverseJoinColumns = @JoinColumn(name = "category_id"))
-  private Set<CategoryJpaEntity> categories;
+  @Builder.Default
+  private Set<CategoryJpaEntity> categories = new HashSet<>();
 
   @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
   @Builder.Default

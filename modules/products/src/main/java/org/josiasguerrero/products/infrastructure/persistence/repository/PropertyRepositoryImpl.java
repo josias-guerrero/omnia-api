@@ -22,10 +22,10 @@ public class PropertyRepositoryImpl implements PropertyRepository {
 
   @Override
   @Transactional
-  public void save(Property property) {
+  public Property save(Property property) {
     PropertyJpaEntity entity = mapper.toJpaEntity(property);
-    jpaRepository.save(entity);
-
+    var savedEntity = jpaRepository.save(entity);
+    return mapper.toDomain(savedEntity);
   }
 
   @Override

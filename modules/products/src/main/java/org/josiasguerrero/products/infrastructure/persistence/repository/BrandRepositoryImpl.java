@@ -22,9 +22,10 @@ public class BrandRepositoryImpl implements BrandRepository {
 
   @Override
   @Transactional
-  public void save(Brand brand) {
+  public Brand save(Brand brand) {
     BrandJpaEntity entity = mapper.toJpaEntity(brand);
-    repository.save(entity);
+    BrandJpaEntity savedEntity = repository.save(entity);
+    return mapper.toDomain(savedEntity);
   }
 
   @Override

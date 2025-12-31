@@ -4,6 +4,7 @@ import org.josiasguerrero.products.application.dto.request.CreateProductRequest;
 import org.josiasguerrero.products.application.dto.response.ProductResponse;
 import org.josiasguerrero.products.application.mapper.ProductApplicationMapper;
 import org.josiasguerrero.products.domain.entity.Product;
+import org.josiasguerrero.products.domain.entity.Property;
 import org.josiasguerrero.products.domain.exception.DuplicateSkuException;
 import org.josiasguerrero.products.domain.port.BrandRepository;
 import org.josiasguerrero.products.domain.port.CategoryRepository;
@@ -61,16 +62,6 @@ public class CreateProductUseCase {
             .orElseThrow(() -> new IllegalArgumentException("Category not found: " + categoryId));
       }
     }
-
-    if (request.properties() != null && !request.properties().isEmpty()) {
-      for (Integer propId : request.properties().keySet()) {
-
-        PropertyId propertyId = PropertyId.from(propId);
-        propertyRepository.findById(propertyId)
-            .orElseThrow(() -> new IllegalArgumentException("Property not found: " + propertyId));
-      }
-    }
-
   }
 
   private Product createProductEntity(CreateProductRequest request) {
@@ -79,7 +70,7 @@ public class CreateProductUseCase {
     Money cost = new Money(request.cost());
     Money price = new Money(request.price());
 
-    Product product = new Product(id, sku, request.name(), cost, price);
+    Product product = new Product(id, sku, request.name(), request.description(), cost, price);
 
     if (request.barcode() != null && !request.barcode().isBlank()) {
       product.setBarcode(new Barcode(request.barcode()));
@@ -104,9 +95,18 @@ public class CreateProductUseCase {
 
     // Asignar propiedades
     if (request.properties() != null) {
-      request.properties().forEach((propId, value) -> product.addProperty(
-          PropertyId.from(propId),
-          PropertyValue.of(value)));
+      request.properties().forEach((propName, value) -> {
+        PropertyId propId = findOrCreateProperty(propName);
+        product.addProperty(propId, PropertyValue.of(value));
+      });
     }
+  }
+
+  private PropertyId findOrCreateProperty(String name) {
+    return propertyRepository.findByName(name).map(Property::getId).orElseGet(() -> {
+      Property newProperty = new Property(name);
+      propertyRepository.save(newProperty);
+      return newProperty.getId();
+    });
   }
 }

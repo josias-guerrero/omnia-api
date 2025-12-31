@@ -36,11 +36,7 @@ server:
 
 logging:
   level:
-    org:
-      springframework:
-        web: ${LOGGING_LEVEL:INFO}
-      hibernate:
-        SQL: ${LOGGING_LEVEL:INFO}
+    org.springframework.web: DEBUG
 
 # security:
 #   module:

@@ -24,9 +24,9 @@ public class CreateBrandUseCase {
 
     Brand brand = new Brand(request.name());
 
-    brandRepository.save(brand);
+    var savedBrand = brandRepository.save(brand);
 
-    return BrandMapper.toResponse(brand);
+    return BrandMapper.toResponse(savedBrand);
 
   }
 }

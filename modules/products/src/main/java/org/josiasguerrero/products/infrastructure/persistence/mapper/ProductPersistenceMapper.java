@@ -1,9 +1,7 @@
 package org.josiasguerrero.products.infrastructure.persistence.mapper;
 
-import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.josiasguerrero.products.domain.entity.Product;
@@ -37,7 +35,7 @@ public class ProductPersistenceMapper {
         : null;
 
     BrandId brandId = entity.getBrandId() != null
-        ? BrandId.from(entity.getBrandId().toString())
+        ? BrandId.from(entity.getBrandId().getId())
         : null;
 
     // Convertir categorías (solo IDs)
@@ -73,21 +71,6 @@ public class ProductPersistenceMapper {
         .createdAt(domain.getCreatedAt())
         .updatedAt(domain.getUpdatedAt())
         .build();
-  }
-
-  public byte[] uuidToBytes(UUID uuid) {
-    ByteBuffer bb = ByteBuffer.wrap(new byte[16]);
-    bb.putLong(uuid.getMostSignificantBits());
-    bb.putLong(uuid.getLeastSignificantBits());
-    return bb.array();
-  }
-
-  public UUID bytesToUUID(byte[] bytes) {
-
-    ByteBuffer bb = ByteBuffer.wrap(bytes);
-    long high = bb.getLong();
-    long low = bb.getLong();
-    return new UUID(high, low);
   }
 
 }

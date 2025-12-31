@@ -35,11 +35,12 @@ public class Product {
 
   private Set<CategoryId> categoryIds;
 
-  public Product(ProductId id, Sku sku, String name, Money cost, Money price) {
+  public Product(ProductId id, Sku sku, String name, String description, Money cost, Money price) {
     this.id = id;
     this.sku = sku;
     this.name = validateName(name);
     validatePricing(cost, price);
+    this.description = description;
     this.cost = cost;
     this.price = price;
     this.stock = Stock.empty();

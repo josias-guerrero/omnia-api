@@ -8,7 +8,7 @@ import org.josiasguerrero.products.domain.valueobject.CategoryId;
 
 public interface CategoryRepository {
 
-  void save(Category category);
+  Category save(Category category);
 
   Optional<Category> findById(CategoryId id);
 

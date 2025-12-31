@@ -8,7 +8,7 @@ import org.josiasguerrero.products.domain.valueobject.BrandId;
 
 public interface BrandRepository {
 
-  void save(Brand brand);
+  Brand save(Brand brand);
 
   Optional<Brand> findById(BrandId id);
 

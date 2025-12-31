@@ -38,9 +38,8 @@ public class ProductRepositoryImpl implements ProductRepository {
   @Override
   @Transactional
   public void save(Product product) {
-    byte[] idBytes = mapper.uuidToBytes(product.getId().value());
 
-    ProductJpaEntity entity = jpaRepository.findById(idBytes).orElseGet(() -> createNewEntity(product));
+    ProductJpaEntity entity = jpaRepository.findById(product.getId().value()).orElseGet(() -> createNewEntity(product));
 
     syncBasicFieds(entity, product);
 
@@ -54,11 +53,15 @@ public class ProductRepositoryImpl implements ProductRepository {
   }
 
   private void syncProperties(Product product, ProductJpaEntity entity) {
-    entity.clearProperties();
-
     if (product.getProperties().isEmpty()) {
       return;
     }
+
+    if (product.getProperties() == null) {
+      return;
+    }
+
+    entity.clearProperties();
 
     List<Integer> propertyIds = product.getProperties().keySet().stream()
         .map(PropertyId::value)
@@ -123,8 +126,7 @@ public class ProductRepositoryImpl implements ProductRepository {
 
   @Override
   public Optional<Product> findById(ProductId id) {
-    byte[] bytes = mapper.uuidToBytes(id.value());
-    return jpaRepository.findById(bytes)
+    return jpaRepository.findById(id.value())
         .map(mapper::toDomain);
   }
 
@@ -162,8 +164,7 @@ public class ProductRepositoryImpl implements ProductRepository {
 
   @Override
   public void delete(ProductId id) {
-    byte[] bytes = mapper.uuidToBytes(id.value());
-    jpaRepository.deleteById(bytes);
+    jpaRepository.deleteById(id.value());
   }
 
   @Override

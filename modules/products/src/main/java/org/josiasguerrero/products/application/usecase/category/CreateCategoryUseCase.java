@@ -25,9 +25,9 @@ public class CreateCategoryUseCase {
 
     Category category = new Category(request.name(), request.description());
 
-    categoryRepository.save(category);
+    var savedCat = categoryRepository.save(category);
 
-    return CategoryMapper.toResponse(category);
+    return CategoryMapper.toResponse(savedCat);
 
   }
 }

@@ -17,7 +17,7 @@ public class BrandPersistenceMapper {
 
   public BrandJpaEntity toJpaEntity(Brand brand) {
     return BrandJpaEntity.builder()
-        .id(brand.getId().value())
+        .id(brand.getId() != null ? brand.getId().value() : null)
         .name(brand.getName())
         .createdAt(brand.getCreatedAt())
         .updatedAt(brand.getUpdatedAt())

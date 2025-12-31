@@ -20,5 +20,5 @@ public record CreateProductRequest(
     String barcode,
     Integer brandId,
     Set<Integer> categoryIds,
-    Map<Integer, String> properties) {
+    Map<String, String> properties) {
 }

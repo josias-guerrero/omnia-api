@@ -22,9 +22,10 @@ public class CategoryRepositoryImpl implements CategoryRepository {
 
   @Override
   @Transactional
-  public void save(Category category) {
+  public Category save(Category category) {
     CategoryJpaEntity entity = mapper.toJpaEntity(category);
-    jpaRepository.save(entity);
+    var savedEntity = jpaRepository.save(entity);
+    return mapper.toDomain(savedEntity);
   }
 
   @Override

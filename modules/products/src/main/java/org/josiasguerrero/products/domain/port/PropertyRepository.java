@@ -8,7 +8,7 @@ import org.josiasguerrero.products.domain.valueobject.PropertyId;
 
 public interface PropertyRepository {
 
-  void save(Property property);
+  Property save(Property property);
 
   Optional<Property> findById(PropertyId id);
 
