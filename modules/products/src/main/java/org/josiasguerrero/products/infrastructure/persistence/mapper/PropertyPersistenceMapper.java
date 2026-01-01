@@ -18,7 +18,7 @@ public class PropertyPersistenceMapper {
 
   public PropertyJpaEntity toJpaEntity(Property property) {
     return PropertyJpaEntity.builder()
-        .id(property.getId().value())
+        .id(property.getId() != null ? property.getId().value() : null)
         .name(property.getName())
         .createdAt(property.getCreatedAt())
         .updatedAt(property.getUpdatedAt())

@@ -52,39 +52,36 @@ public class ProductRepositoryImpl implements ProductRepository {
     jpaRepository.save(entity);
   }
 
-  private void syncProperties(Product product, ProductJpaEntity entity) {
-    if (product.getProperties().isEmpty()) {
-      return;
+    private void syncProperties(Product product, ProductJpaEntity entity) {
+        if (product.getProperties() == null || product.getProperties().isEmpty()) {
+            entity.clearProperties();
+            return;
+        }
+
+        entity.clearProperties();
+
+        List<Integer> propertyIds = product.getProperties().keySet().stream()
+                .map(PropertyId::value)
+                .toList();
+
+        Map<Integer, PropertyJpaEntity> propertiesMap = propertyRepository
+                .findAllById(propertyIds).stream().collect(Collectors.toMap(PropertyJpaEntity::getId, p -> p));
+
+        product.getProperties().forEach((propId, propValue) -> {
+            PropertyJpaEntity property = propertiesMap.get(propId.value());
+
+            if (property == null) {
+                throw new PropertyNotFoundException(propId);
+            }
+
+            ProductPropertyJpaEntity productPropertyJpaEntity = ProductPropertyJpaEntity.builder()
+                    .property(property)
+                    .value(propValue.value())
+                    .build();
+
+            entity.addProperty(productPropertyJpaEntity);
+        });
     }
-
-    if (product.getProperties() == null) {
-      return;
-    }
-
-    entity.clearProperties();
-
-    List<Integer> propertyIds = product.getProperties().keySet().stream()
-        .map(PropertyId::value)
-        .toList();
-
-    Map<Integer, PropertyJpaEntity> propertiesMap = propertyRepository
-        .findAllById(propertyIds).stream().collect(Collectors.toMap(PropertyJpaEntity::getId, p -> p));
-
-    product.getProperties().forEach((propId, propValue) -> {
-      PropertyJpaEntity property = propertiesMap.get(propId.value());
-
-      if (property == null) {
-        throw new PropertyNotFoundException(propId);
-      }
-
-      ProductPropertyJpaEntity productPropertyJpaEntity = ProductPropertyJpaEntity.builder()
-          .property(property)
-          .value(propValue.value())
-          .build();
-
-      entity.addProperty(productPropertyJpaEntity);
-    });
-  }
 
   private void syncCategories(Product product, ProductJpaEntity entity) {
     if (product.getCategoryIds().isEmpty()) {
