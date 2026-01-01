@@ -1,32 +1,14 @@
-# Etapa de build con Gradle y JDK 25
-FROM eclipse-temurin:25-jdk-alpine AS build
+# Runtime stage
+FROM eclipse-temurin:25-jre-alpine
 LABEL authors="josias"
 
 WORKDIR /app
 
-# Copiamos Gradle wrapper y archivos de configuración primero (para aprovechar cache)
-COPY gradlew .
-COPY gradle gradle
-COPY build.gradle settings.gradle ./
+# The application is already built by the CI runner (GitHub Actions), so we just copy the JAR.
+# Expects the context to have build/libs/*.jar available.
+COPY build/libs/*.jar app.jar
 
-# Copiamos el resto del código fuente
-COPY src src
-COPY modules modules
-
-# Damos permisos al wrapper
-RUN chmod +x gradlew
-
-# Ejecutamos build con Gradle (sin tests)
-RUN ./gradlew build -x test
-
-# Etapa de runtime con JRE 25
-FROM eclipse-temurin:25-jre-alpine
-WORKDIR /app
-
-# Copiamos el jar generado desde la etapa de build
-COPY --from=build /app/build/libs/*.jar app.jar
-
-# Variables de entorno para configuración
+# Environment configuration
 ENV JAVA_OPTS="-Xmx512m -Xms256m"
 ENV SERVER_PORT=8080
 
