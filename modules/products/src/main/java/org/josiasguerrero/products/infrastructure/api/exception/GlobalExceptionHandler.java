@@ -125,7 +125,7 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(IllegalStateException.class)
   public ResponseEntity<ApiError> handleIllegalStateException(
-      IllegalArgumentException ex) {
+      IllegalStateException ex) {
     log.warn("Invalid state: {}", ex.getMessage());
 
     ApiError apiError = ApiError.builder()
