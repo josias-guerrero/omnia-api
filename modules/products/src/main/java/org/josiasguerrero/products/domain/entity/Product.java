@@ -110,8 +110,21 @@ public class Product {
     this.updatedAt = LocalDateTime.now();
   }
 
+  public void clearCategories() {
+    this.categoryIds.clear();
+  }
+
+  public void clearProperties() {
+    this.properties.clear();
+  }
+
   public void addProperty(PropertyId propertyId, PropertyValue propertyValue) {
     this.properties.put(propertyId, propertyValue);
+    this.updatedAt = LocalDateTime.now();
+  }
+
+  public void removeProperty(PropertyId propertyId) {
+    this.properties.remove(propertyId);
     this.updatedAt = LocalDateTime.now();
   }
 

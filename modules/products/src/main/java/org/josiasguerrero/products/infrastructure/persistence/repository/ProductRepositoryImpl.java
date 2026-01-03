@@ -53,33 +53,52 @@ public class ProductRepositoryImpl implements ProductRepository {
   }
 
     private void syncProperties(Product product, ProductJpaEntity entity) {
-        if (product.getProperties() == null || product.getProperties().isEmpty()) {
+        if (product.getProperties() == null) {
             entity.clearProperties();
             return;
         }
 
-        entity.clearProperties();
-
+        // 1. Preload Property definitions for all properties in the domain object
         List<Integer> propertyIds = product.getProperties().keySet().stream()
                 .map(PropertyId::value)
                 .toList();
 
-        Map<Integer, PropertyJpaEntity> propertiesMap = propertyRepository
+        Map<Integer, PropertyJpaEntity> propertiesDefinitionMap = propertyRepository
                 .findAllById(propertyIds).stream().collect(Collectors.toMap(PropertyJpaEntity::getId, p -> p));
 
-        product.getProperties().forEach((propId, propValue) -> {
-            PropertyJpaEntity property = propertiesMap.get(propId.value());
+        // 2. Identify properties to REMOVE (present in JPA but not in Domain)
+        Set<Integer> domainPropertyIds = new HashSet<>(propertyIds);
+        List<ProductPropertyJpaEntity> toRemove = entity.getProperties().stream()
+                .filter(p -> !domainPropertyIds.contains(p.getProperty().getId()))
+                .toList();
+        
+        toRemove.forEach(entity::removeProperty);
 
-            if (property == null) {
+        // 3. Update existing or Add new properties
+        product.getProperties().forEach((propId, propValue) -> {
+            Integer id = propId.value();
+            PropertyJpaEntity definition = propertiesDefinitionMap.get(id);
+
+            if (definition == null) {
                 throw new PropertyNotFoundException(propId);
             }
 
-            ProductPropertyJpaEntity productPropertyJpaEntity = ProductPropertyJpaEntity.builder()
-                    .property(property)
-                    .value(propValue.value())
-                    .build();
+            // Check if it already exists
+            Optional<ProductPropertyJpaEntity> existingProp = entity.getProperties().stream()
+                    .filter(p -> p.getProperty().getId().equals(id))
+                    .findFirst();
 
-            entity.addProperty(productPropertyJpaEntity);
+            if (existingProp.isPresent()) {
+                // UPDATE
+                existingProp.get().setValue(propValue.value());
+            } else {
+                // ADD
+                ProductPropertyJpaEntity newProp = ProductPropertyJpaEntity.builder()
+                        .property(definition)
+                        .value(propValue.value())
+                        .build();
+                entity.addProperty(newProp);
+            }
         });
     }
 

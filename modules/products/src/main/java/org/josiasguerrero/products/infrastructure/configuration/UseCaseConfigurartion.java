@@ -74,8 +74,11 @@ public class UseCaseConfigurartion {
       ProductRepository productRepository,
       BrandRepository brandRepository,
       DtoValidator dtoValidator,
-      ProductApplicationMapper productApplicationMapper) {
-    return new UpdateProductUseCase(productRepository, brandRepository, dtoValidator, productApplicationMapper);
+      ProductApplicationMapper productApplicationMapper,
+      CategoryRepository categoryRepository,
+      PropertyRepository propertyRepository) {
+    return new UpdateProductUseCase(productRepository, brandRepository, categoryRepository, propertyRepository,
+        dtoValidator, productApplicationMapper);
   }
 
   @Bean
