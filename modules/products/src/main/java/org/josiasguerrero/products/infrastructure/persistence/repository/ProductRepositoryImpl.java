@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.josiasguerrero.products.domain.entity.Product;
@@ -21,6 +22,9 @@ import org.josiasguerrero.products.infrastructure.persistence.entity.ProductJpaE
 import org.josiasguerrero.products.infrastructure.persistence.entity.ProductPropertyJpaEntity;
 import org.josiasguerrero.products.infrastructure.persistence.entity.PropertyJpaEntity;
 import org.josiasguerrero.products.infrastructure.persistence.mapper.ProductPersistenceMapper;
+import org.josiasguerrero.shared.domain.pagination.Page;
+import org.josiasguerrero.shared.domain.pagination.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -52,55 +56,55 @@ public class ProductRepositoryImpl implements ProductRepository {
     jpaRepository.save(entity);
   }
 
-    private void syncProperties(Product product, ProductJpaEntity entity) {
-        if (product.getProperties() == null) {
-            entity.clearProperties();
-            return;
-        }
-
-        // 1. Preload Property definitions for all properties in the domain object
-        List<Integer> propertyIds = product.getProperties().keySet().stream()
-                .map(PropertyId::value)
-                .toList();
-
-        Map<Integer, PropertyJpaEntity> propertiesDefinitionMap = propertyRepository
-                .findAllById(propertyIds).stream().collect(Collectors.toMap(PropertyJpaEntity::getId, p -> p));
-
-        // 2. Identify properties to REMOVE (present in JPA but not in Domain)
-        Set<Integer> domainPropertyIds = new HashSet<>(propertyIds);
-        List<ProductPropertyJpaEntity> toRemove = entity.getProperties().stream()
-                .filter(p -> !domainPropertyIds.contains(p.getProperty().getId()))
-                .toList();
-        
-        toRemove.forEach(entity::removeProperty);
-
-        // 3. Update existing or Add new properties
-        product.getProperties().forEach((propId, propValue) -> {
-            Integer id = propId.value();
-            PropertyJpaEntity definition = propertiesDefinitionMap.get(id);
-
-            if (definition == null) {
-                throw new PropertyNotFoundException(propId);
-            }
-
-            // Check if it already exists
-            Optional<ProductPropertyJpaEntity> existingProp = entity.getProperties().stream()
-                    .filter(p -> p.getProperty().getId().equals(id))
-                    .findFirst();
-
-            if (existingProp.isPresent()) {
-                // UPDATE
-                existingProp.get().setValue(propValue.value());
-            } else {
-                // ADD
-                ProductPropertyJpaEntity newProp = ProductPropertyJpaEntity.builder()
-                        .property(definition)
-                        .value(propValue.value())
-                        .build();
-                entity.addProperty(newProp);
-            }
-        });
+  private void syncProperties(Product product, ProductJpaEntity entity) {
+    if (product.getProperties() == null) {
+      entity.clearProperties();
+      return;
     }
+
+    // 1. Preload Property definitions for all properties in the domain object
+    List<Integer> propertyIds = product.getProperties().keySet().stream()
+        .map(PropertyId::value)
+        .toList();
+
+    Map<Integer, PropertyJpaEntity> propertiesDefinitionMap = propertyRepository
+        .findAllById(propertyIds).stream().collect(Collectors.toMap(PropertyJpaEntity::getId, p -> p));
+
+    // 2. Identify properties to REMOVE (present in JPA but not in Domain)
+    Set<Integer> domainPropertyIds = new HashSet<>(propertyIds);
+    List<ProductPropertyJpaEntity> toRemove = entity.getProperties().stream()
+        .filter(p -> !domainPropertyIds.contains(p.getProperty().getId()))
+        .toList();
+
+    toRemove.forEach(entity::removeProperty);
+
+    // 3. Update existing or Add new properties
+    product.getProperties().forEach((propId, propValue) -> {
+      Integer id = propId.value();
+      PropertyJpaEntity definition = propertiesDefinitionMap.get(id);
+
+      if (definition == null) {
+        throw new PropertyNotFoundException(propId);
+      }
+
+      // Check if it already exists
+      Optional<ProductPropertyJpaEntity> existingProp = entity.getProperties().stream()
+          .filter(p -> p.getProperty().getId().equals(id))
+          .findFirst();
+
+      if (existingProp.isPresent()) {
+        // UPDATE
+        existingProp.get().setValue(propValue.value());
+      } else {
+        // ADD
+        ProductPropertyJpaEntity newProp = ProductPropertyJpaEntity.builder()
+            .property(definition)
+            .value(propValue.value())
+            .build();
+        entity.addProperty(newProp);
+      }
+    });
+  }
 
   private void syncCategories(Product product, ProductJpaEntity entity) {
     if (product.getCategoryIds().isEmpty()) {
@@ -153,24 +157,18 @@ public class ProductRepositoryImpl implements ProductRepository {
   }
 
   @Override
-  public List<Product> findAll() {
-    return jpaRepository.findAll().stream()
-        .map(mapper::toDomain)
-        .collect(Collectors.toList());
+  public Page<Product> findAll(PageRequest pageRequest) {
+    return executePagedQuery(pageRequest, (pageable) -> jpaRepository.findAll(pageable));
   }
 
   @Override
-  public List<Product> findByCategory(CategoryId categoryId) {
-    return jpaRepository.findByCategory(categoryId.value()).stream()
-        .map(mapper::toDomain)
-        .collect(Collectors.toList());
+  public Page<Product> findByCategory(CategoryId categoryId, PageRequest pageRequest) {
+    return executePagedQuery(pageRequest, (pageable) -> jpaRepository.findByCategory(categoryId.value(), pageable));
   }
 
   @Override
-  public List<Product> findByBrand(BrandId brandId) {
-    return jpaRepository.findByBrandId(brandId.value()).stream()
-        .map(mapper::toDomain)
-        .collect(Collectors.toList());
+  public Page<Product> findByBrand(BrandId brandId, PageRequest pageRequest) {
+    return executePagedQuery(pageRequest, (pageable) -> jpaRepository.findByBrandId(brandId.value(), pageable));
   }
 
   @Override
@@ -184,17 +182,13 @@ public class ProductRepositoryImpl implements ProductRepository {
   }
 
   @Override
-  public List<Product> findLowStock(int threshold) {
-    return jpaRepository.findByStockLessThan(threshold).stream()
-        .map(mapper::toDomain)
-        .collect(Collectors.toList());
+  public Page<Product> findLowStock(int threshold, PageRequest pageRequest) {
+    return executePagedQuery(pageRequest, (pageable) -> jpaRepository.findByStockLessThan(threshold, pageable));
   }
 
   @Override
-  public List<Product> findByName(String name) {
-    return jpaRepository.findByNameContaining(name).stream()
-        .map(mapper::toDomain)
-        .collect(Collectors.toList());
+  public Page<Product> findByName(String name, PageRequest pageRequest) {
+    return executePagedQuery(pageRequest, (pageable) -> jpaRepository.findByNameContaining(name, pageable));
   }
 
   private ProductJpaEntity createNewEntity(Product product) {
@@ -209,6 +203,31 @@ public class ProductRepositoryImpl implements ProductRepository {
     entity.setCost(product.getCost().amount());
     entity.setPrice(product.getPrice().amount());
     entity.setStock(product.getStock().quantity());
+  }
+
+  /**
+   * Exceutes the query given handling the page entities of spring and returning
+   * domain entities.
+   * 
+   * @param pageRequest   domain entity
+   * @param queryFunciton function given that returns a spring Page that must be
+   *                      converted to domain entity
+   * @return Page<Product>
+   */
+  private Page<Product> executePagedQuery(
+      PageRequest pageRequest,
+      Function<Pageable, org.springframework.data.domain.Page<ProductJpaEntity>> queryFunciton) {
+
+    // Spring PageRequest entity
+    var springPageRequest = org.springframework.data.domain.PageRequest
+        .of(pageRequest.page(), pageRequest.size());
+
+    // Spring Page<T> entity
+    var springPage = queryFunciton.apply(springPageRequest);
+
+    List<Product> products = springPage.map(mapper::toDomain).getContent();
+
+    return Page.of(products, pageRequest, springPage.getTotalElements());
   }
 
 }

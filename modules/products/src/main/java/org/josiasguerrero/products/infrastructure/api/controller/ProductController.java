@@ -1,6 +1,5 @@
 package org.josiasguerrero.products.infrastructure.api.controller;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -14,6 +13,8 @@ import org.josiasguerrero.products.application.usecase.Product.FindProductByIdUs
 import org.josiasguerrero.products.application.usecase.Product.UpdateProductCategoriesUseCase;
 import org.josiasguerrero.products.application.usecase.Product.UpdateProductPropertiesUseCase;
 import org.josiasguerrero.products.application.usecase.Product.UpdateProductUseCase;
+import org.josiasguerrero.shared.domain.pagination.Page;
+import org.josiasguerrero.shared.domain.pagination.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
@@ -60,8 +62,11 @@ public class ProductController {
   }
 
   @GetMapping
-  public ResponseEntity<List<ProductResponse>> findAll() {
-    List<ProductResponse> response = findAllProductsUseCase.execute();
+  public ResponseEntity<Page<ProductResponse>> findAll(
+      @RequestParam(name = "page", defaultValue = "0") int page,
+      @RequestParam(name = "size", defaultValue = "20") int size) {
+    PageRequest pageRequest = PageRequest.of(page, size);
+    Page<ProductResponse> response = findAllProductsUseCase.execute(pageRequest);
     return ResponseEntity.ok(response);
   }
 

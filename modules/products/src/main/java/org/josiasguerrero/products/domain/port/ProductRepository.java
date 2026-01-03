@@ -1,6 +1,5 @@
 package org.josiasguerrero.products.domain.port;
 
-import java.util.List;
 import java.util.Optional;
 
 import org.josiasguerrero.products.domain.entity.Product;
@@ -8,6 +7,8 @@ import org.josiasguerrero.products.domain.valueobject.BrandId;
 import org.josiasguerrero.products.domain.valueobject.CategoryId;
 import org.josiasguerrero.products.domain.valueobject.ProductId;
 import org.josiasguerrero.products.domain.valueobject.Sku;
+import org.josiasguerrero.shared.domain.pagination.Page;
+import org.josiasguerrero.shared.domain.pagination.PageRequest;
 
 public interface ProductRepository {
   void save(Product product);
@@ -16,18 +17,18 @@ public interface ProductRepository {
 
   Optional<Product> findBySku(Sku sku);
 
-  List<Product> findAll();
+  Page<Product> findAll(PageRequest pageRequest);
 
-  List<Product> findByCategory(CategoryId categoryId);
+  Page<Product> findByCategory(CategoryId categoryId, PageRequest pageRequest);
 
-  List<Product> findByBrand(BrandId brandId);
+  Page<Product> findByBrand(BrandId brandId, PageRequest pageRequest);
 
   boolean existsBySku(Sku sku);
 
   void delete(ProductId id);
 
   // Queries útiles para el negocio
-  List<Product> findLowStock(int threshold);
+  Page<Product> findLowStock(int threshold, PageRequest pageRequest);
 
-  List<Product> findByName(String name);
+  Page<Product> findByName(String name, PageRequest pageRequest);
 }
