@@ -45,7 +45,6 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GH_TOKEN }}
-
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
