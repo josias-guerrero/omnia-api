@@ -21,12 +21,18 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/v1/properties")
+@Tag(name = "Properties", description = "Endpoints for managing product custom properties")
 public class PropertyController {
   private final CreatePropertyUseCase createPropertyUseCase;
   private final DeletePropertyUseCase deletePropertyUseCase;
@@ -35,31 +41,56 @@ public class PropertyController {
   private final FindAllPropertiesUseCase findAllPropertiesUseCase;
 
   @PostMapping
+  @Operation(summary = "Create a property", description = "Creates a new custom property definition")
+  @ApiResponses({
+      @ApiResponse(responseCode = "201", description = "Property created successfully"),
+      @ApiResponse(responseCode = "400", description = "Invalid input data")
+  })
   public ResponseEntity<PropertyResponse> create(@Valid @RequestBody CreatePropertyRequest request) {
     var response = createPropertyUseCase.execute(request);
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
   @DeleteMapping("/{id}")
-  public ResponseEntity<Void> delete(@PathVariable("id") Integer id) {
+  @Operation(summary = "Delete a property", description = "Deletes a property definition by its ID")
+  @ApiResponses({
+      @ApiResponse(responseCode = "204", description = "Property deleted successfully"),
+      @ApiResponse(responseCode = "404", description = "Property not found")
+  })
+  public ResponseEntity<Void> delete(@Parameter(description = "Property ID") @PathVariable("id") Integer id) {
     deletePropertyUseCase.execute(id);
     return ResponseEntity.noContent().build();
   }
 
   @GetMapping
+  @Operation(summary = "List all properties", description = "Retrieves all custom property definitions")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "List of properties")
+  })
   public ResponseEntity<List<PropertyResponse>> findAll() {
     var response = findAllPropertiesUseCase.execute();
     return ResponseEntity.ok(response);
   }
 
   @GetMapping("/{id}")
-  public ResponseEntity<PropertyResponse> findById(@PathVariable("id") Integer id) {
+  @Operation(summary = "Find property by ID", description = "Retrieves a property definition by its ID")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Property found"),
+      @ApiResponse(responseCode = "404", description = "Property not found")
+  })
+  public ResponseEntity<PropertyResponse> findById(@Parameter(description = "Property ID") @PathVariable("id") Integer id) {
     var response = findPropertyByIdUseCase.execute(id);
     return ResponseEntity.ok(response);
   }
 
   @PutMapping("/{id}")
-  public ResponseEntity<PropertyResponse> update(@PathVariable("id") Integer id, UpdatePropertyRequest request) {
+  @Operation(summary = "Update a property", description = "Updates an existing property definition by its ID")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Property updated successfully"),
+      @ApiResponse(responseCode = "400", description = "Invalid input data"),
+      @ApiResponse(responseCode = "404", description = "Property not found")
+  })
+  public ResponseEntity<PropertyResponse> update(@Parameter(description = "Property ID") @PathVariable("id") Integer id, UpdatePropertyRequest request) {
     var response = updatePropertyUseCase.execute(id, request);
     return ResponseEntity.ok(response);
   }

@@ -1,5 +1,25 @@
 # Products Module (`modules/products`)
 
+<!--toc:start-->
+
+- [Products Module (`modules/products`)](#products-module-modulesproducts)
+  - [Responsibility](#responsibility)
+  - [Domain Model](#domain-model)
+    - [Business Rules](#business-rules)
+  - [API Reference](#api-reference)
+    - [Products — `/api/v1/products`](#products-apiv1products)
+      - [Search Parameters (`GET /api/v1/products`)](#search-parameters-get-apiv1products)
+      - [Create Product Request Body](#create-product-request-body)
+    - [Brands — `/api/v1/brands`](#brands-apiv1brands)
+    - [Categories — `/api/v1/categories`](#categories-apiv1categories)
+    - [Properties — `/api/v1/properties`](#properties-apiv1properties)
+  - [Error Responses](#error-responses)
+  - [Architecture Layers](#architecture-layers)
+    - [Layer Rules](#layer-rules)
+  - [Database Schema](#database-schema)
+  - [Adding a New Use Case](#adding-a-new-use-case)
+  <!--toc:end-->
+
 Manages the product catalog for Omnia. This is the core reference domain —
 all other modules (inventory, sales) depend on products existing.
 
@@ -8,12 +28,15 @@ all other modules (inventory, sales) depend on products existing.
 ## Responsibility
 
 This module owns:
+
 - **Products** — the sellable items in your catalog
 - **Brands** — manufacturers or brand labels assigned to products
 - **Categories** — organizational groupings for products (many-to-many)
-- **Properties** — custom key-value attributes attached to products (e.g., color, size, material)
+- **Properties** — custom key-value attributes attached to products (e.g.,
+  color, size, material)
 
 It does **not** own:
+
 - Stock movements or warehouse stock → that belongs to `inventory`
 - Sales or orders → that belongs to `sales`
 
@@ -21,7 +44,7 @@ It does **not** own:
 
 ## Domain Model
 
-```
+```text
 Product (UUID)
   ├── sku: Sku                         unique identifier per product
   ├── name: String                     max 100 chars
@@ -60,26 +83,26 @@ Property (Integer)
 
 ### Products — `/api/v1/products`
 
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `/api/v1/products` | Create a new product |
-| `GET` | `/api/v1/products/{id}` | Get product by UUID |
-| `GET` | `/api/v1/products` | Search/filter products (paginated) |
-| `PUT` | `/api/v1/products/{id}` | Update product fields |
-| `DELETE` | `/api/v1/products/{id}` | Delete product |
-| `POST` | `/api/v1/products/{id}/categories` | Replace all categories on a product |
-| `POST` | `/api/v1/products/{id}/properties` | Replace all properties on a product |
+| Method   | Path                               | Description                         |
+| -------- | ---------------------------------- | ----------------------------------- |
+| `POST`   | `/api/v1/products`                 | Create a new product                |
+| `GET`    | `/api/v1/products/{id}`            | Get product by UUID                 |
+| `GET`    | `/api/v1/products`                 | Search/filter products (paginated)  |
+| `PUT`    | `/api/v1/products/{id}`            | Update product fields               |
+| `DELETE` | `/api/v1/products/{id}`            | Delete product                      |
+| `POST`   | `/api/v1/products/{id}/categories` | Replace all categories on a product |
+| `POST`   | `/api/v1/products/{id}/properties` | Replace all properties on a product |
 
 #### Search Parameters (`GET /api/v1/products`)
 
-| Param | Type | Description |
-|---|---|---|
-| `search` | `String` | Filter by name (case-insensitive contains) |
-| `brandId` | `Long` | Filter by brand |
-| `categoryIds` | `List<Long>` | Filter by one or more categories |
-| `lowStockThreshold` | `Integer` | Return only products with stock below this value |
-| `page` | `int` | Page number (default: `0`) |
-| `size` | `int` | Page size (default: `20`) |
+| Param               | Type         | Description                                      |
+| ------------------- | ------------ | ------------------------------------------------ |
+| `search`            | `String`     | Filter by name (case-insensitive contains)       |
+| `brandId`           | `Long`       | Filter by brand                                  |
+| `categoryIds`       | `List<Long>` | Filter by one or more categories                 |
+| `lowStockThreshold` | `Integer`    | Return only products with stock below this value |
+| `page`              | `int`        | Page number (default: `0`)                       |
+| `size`              | `int`        | Page size (default: `20`)                        |
 
 #### Create Product Request Body
 
@@ -88,7 +111,7 @@ Property (Integer)
   "sku": "LAPTOP-001",
   "name": "MacBook Pro 14",
   "description": "Apple laptop with M3 chip",
-  "cost": 1200.00,
+  "cost": 1200.0,
   "price": 1599.99,
   "brandId": 1,
   "categoryIds": [2, 5],
@@ -105,40 +128,41 @@ Property (Integer)
 
 ### Brands — `/api/v1/brands`
 
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `/api/v1/brands` | Create brand |
-| `GET` | `/api/v1/brands` | List all brands |
-| `GET` | `/api/v1/brands/{id}` | Get brand by ID |
-| `GET` | `/api/v1/brands/name/{name}` | Get brand by name |
-| `PUT` | `/api/v1/brands/{id}` | Update brand |
-| `DELETE` | `/api/v1/brands/{id}` | Delete brand |
+| Method   | Path                         | Description       |
+| -------- | ---------------------------- | ----------------- |
+| `POST`   | `/api/v1/brands`             | Create brand      |
+| `GET`    | `/api/v1/brands`             | List all brands   |
+| `GET`    | `/api/v1/brands/{id}`        | Get brand by ID   |
+| `GET`    | `/api/v1/brands/name/{name}` | Get brand by name |
+| `PUT`    | `/api/v1/brands/{id}`        | Update brand      |
+| `DELETE` | `/api/v1/brands/{id}`        | Delete brand      |
 
 ---
 
 ### Categories — `/api/v1/categories`
 
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `/api/v1/categories` | Create category |
-| `GET` | `/api/v1/categories` | List all categories |
-| `GET` | `/api/v1/categories/{id}` | Get category by ID |
-| `PUT` | `/api/v1/categories/{id}` | Update category |
-| `DELETE` | `/api/v1/categories/{id}` | Delete category |
+| Method   | Path                      | Description         |
+| -------- | ------------------------- | ------------------- |
+| `POST`   | `/api/v1/categories`      | Create category     |
+| `GET`    | `/api/v1/categories`      | List all categories |
+| `GET`    | `/api/v1/categories/{id}` | Get category by ID  |
+| `PUT`    | `/api/v1/categories/{id}` | Update category     |
+| `DELETE` | `/api/v1/categories/{id}` | Delete category     |
 
 ---
 
 ### Properties — `/api/v1/properties`
 
-Properties are **attribute definitions** (e.g., "Color", "Size"). Values are set per product via the product API.
+Properties are **attribute definitions** (e.g., "Color", "Size"). Values are set
+per product via the product API.
 
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `/api/v1/properties` | Create property definition |
-| `GET` | `/api/v1/properties` | List all property definitions |
-| `GET` | `/api/v1/properties/{id}` | Get property by ID |
-| `PUT` | `/api/v1/properties/{id}` | Update property |
-| `DELETE` | `/api/v1/properties/{id}` | Delete property |
+| Method   | Path                      | Description                   |
+| -------- | ------------------------- | ----------------------------- |
+| `POST`   | `/api/v1/properties`      | Create property definition    |
+| `GET`    | `/api/v1/properties`      | List all property definitions |
+| `GET`    | `/api/v1/properties/{id}` | Get property by ID            |
+| `PUT`    | `/api/v1/properties/{id}` | Update property               |
+| `DELETE` | `/api/v1/properties/{id}` | Delete property               |
 
 ---
 
@@ -156,18 +180,18 @@ All errors follow a consistent structure:
 }
 ```
 
-| HTTP Status | When |
-|---|---|
-| `400 Bad Request` | Validation failure, business rule violation |
-| `404 Not Found` | Product, brand, category, or property doesn't exist |
-| `409 Conflict` | Duplicate SKU, barcode, brand name, or property name |
-| `500 Internal Server Error` | Unexpected server error |
+| HTTP Status                 | When                                                 |
+| --------------------------- | ---------------------------------------------------- |
+| `400 Bad Request`           | Validation failure, business rule violation          |
+| `404 Not Found`             | Product, brand, category, or property doesn't exist  |
+| `409 Conflict`              | Duplicate SKU, barcode, brand name, or property name |
+| `500 Internal Server Error` | Unexpected server error                              |
 
 ---
 
 ## Architecture Layers
 
-```
+```text
 products/
 └── src/main/java/org/josiasguerrero/products/
     │
@@ -219,11 +243,11 @@ products/
 
 ### Layer Rules
 
-| Layer | Can depend on | Cannot depend on |
-|---|---|---|
-| `domain` | `shared` kernel only | `application`, `infrastructure`, Spring, JPA |
-| `application` | `domain`, `shared` | `infrastructure`, Spring MVC, JPA |
-| `infrastructure` | `application`, `domain`, `shared`, Spring, JPA | Nothing extra |
+| Layer            | Can depend on                                  | Cannot depend on                             |
+| ---------------- | ---------------------------------------------- | -------------------------------------------- |
+| `domain`         | `shared` kernel only                           | `application`, `infrastructure`, Spring, JPA |
+| `application`    | `domain`, `shared`                             | `infrastructure`, Spring MVC, JPA            |
+| `infrastructure` | `application`, `domain`, `shared`, Spring, JPA | Nothing extra                                |
 
 ---
 
@@ -246,9 +270,14 @@ Migration file: `src/main/resources/db/migration/V2__PRODUCTS_RELATED_TABLES.sql
 
 Follow this checklist when adding new functionality:
 
-1. **Domain** — Does it require a new method on an entity? Add it there with business validation.
-2. **Port** — Does it need a new repository query? Add the method to the port interface in `domain/port/`.
-3. **Application** — Create a new use case class in `application/usecase/`. Keep it focused on one operation.
-4. **Infrastructure** — Implement the new port method in `persistence/repository/`. Add the Spring `@Bean` to `UseCaseConfiguration`.
+1. **Domain** — Does it require a new method on an entity? Add it there with
+   business validation.
+2. **Port** — Does it need a new repository query? Add the method to the port
+   interface in `domain/port/`.
+3. **Application** — Create a new use case class in `application/usecase/`.
+   Keep it focused on one operation.
+4. **Infrastructure** — Implement the new port method in
+   `persistence/repository/`. Add the Spring `@Bean` to `UseCaseConfiguration`.
 5. **Controller** — Add the endpoint to the appropriate controller.
-6. **Test** — Write a unit test for the use case (mock the repository) and ideally an integration test for the endpoint.
+6. **Test** — Write a unit test for the use case (mock the repository) and
+   ideally an integration test for the endpoint.
