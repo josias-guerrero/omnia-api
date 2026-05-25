@@ -1,20 +1,21 @@
 package org.josiasguerrero.products.infrastructure.api.controller;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import org.josiasguerrero.products.application.dto.request.CreateProductRequest;
 import org.josiasguerrero.products.application.dto.request.UpdateProductRequest;
 import org.josiasguerrero.products.application.dto.response.ProductResponse;
+import org.josiasguerrero.products.application.query.SearchProductsQuery;
 import org.josiasguerrero.products.application.usecase.Product.CreateProductUseCase;
 import org.josiasguerrero.products.application.usecase.Product.DeleteProductUseCase;
-import org.josiasguerrero.products.application.usecase.Product.FindAllProductsUseCase;
 import org.josiasguerrero.products.application.usecase.Product.FindProductByIdUseCase;
+import org.josiasguerrero.products.application.usecase.Product.SearchProductsQueryHandler;
 import org.josiasguerrero.products.application.usecase.Product.UpdateProductCategoriesUseCase;
 import org.josiasguerrero.products.application.usecase.Product.UpdateProductPropertiesUseCase;
 import org.josiasguerrero.products.application.usecase.Product.UpdateProductUseCase;
 import org.josiasguerrero.shared.domain.pagination.Page;
-import org.josiasguerrero.shared.domain.pagination.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -40,7 +41,7 @@ public class ProductController {
   private final UpdateProductUseCase updateProductUseCase;
   private final UpdateProductCategoriesUseCase updateProductCategoriesUseCase;
   private final UpdateProductPropertiesUseCase updateProductPropertiesUseCase;
-  private final FindAllProductsUseCase findAllProductsUseCase;
+  private final SearchProductsQueryHandler searchHandler;
 
   @PostMapping
   public ResponseEntity<ProductResponse> create(@Valid @RequestBody CreateProductRequest request) {
@@ -62,11 +63,22 @@ public class ProductController {
   }
 
   @GetMapping
-  public ResponseEntity<Page<ProductResponse>> findAll(
+  public ResponseEntity<Page<ProductResponse>> searchProducts(
+      @RequestParam(required = false, name = "brandId") Long brandId,
+      @RequestParam(required = false, name = "categoryIds") List<Long> categoryIds,
+      @RequestParam(required = false, name = "lowStockThreshold") Integer lowStockThreshold,
+      @RequestParam(required = false, name = "search") String search,
       @RequestParam(name = "page", defaultValue = "0") int page,
       @RequestParam(name = "size", defaultValue = "20") int size) {
-    PageRequest pageRequest = PageRequest.of(page, size);
-    Page<ProductResponse> response = findAllProductsUseCase.execute(pageRequest);
+
+    SearchProductsQuery query = new SearchProductsQuery(
+        brandId,
+        categoryIds,
+        lowStockThreshold,
+        search,
+        page,
+        size);
+    Page<ProductResponse> response = searchHandler.handle(query);
     return ResponseEntity.ok(response);
   }
 

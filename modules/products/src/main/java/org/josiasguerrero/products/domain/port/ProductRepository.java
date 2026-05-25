@@ -7,6 +7,7 @@ import org.josiasguerrero.products.domain.valueobject.BrandId;
 import org.josiasguerrero.products.domain.valueobject.CategoryId;
 import org.josiasguerrero.products.domain.valueobject.ProductId;
 import org.josiasguerrero.products.domain.valueobject.Sku;
+import org.josiasguerrero.shared.domain.criteria.Criteria;
 import org.josiasguerrero.shared.domain.pagination.Page;
 import org.josiasguerrero.shared.domain.pagination.PageRequest;
 
@@ -22,6 +23,8 @@ public interface ProductRepository {
   Page<Product> findByCategory(CategoryId categoryId, PageRequest pageRequest);
 
   Page<Product> findByBrand(BrandId brandId, PageRequest pageRequest);
+
+  Page<Product> findByCriteria(Criteria criteria);
 
   boolean existsBySku(Sku sku);
 

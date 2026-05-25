@@ -3,8 +3,8 @@ package org.josiasguerrero.products.infrastructure.configuration;
 import org.josiasguerrero.products.application.mapper.ProductApplicationMapper;
 import org.josiasguerrero.products.application.usecase.Product.CreateProductUseCase;
 import org.josiasguerrero.products.application.usecase.Product.DeleteProductUseCase;
-import org.josiasguerrero.products.application.usecase.Product.FindAllProductsUseCase;
 import org.josiasguerrero.products.application.usecase.Product.FindProductByIdUseCase;
+import org.josiasguerrero.products.application.usecase.Product.SearchProductsQueryHandler;
 import org.josiasguerrero.products.application.usecase.Product.UpdateProductCategoriesUseCase;
 import org.josiasguerrero.products.application.usecase.Product.UpdateProductPropertiesUseCase;
 import org.josiasguerrero.products.application.usecase.Product.UpdateProductUseCase;
@@ -56,17 +56,17 @@ public class UseCaseConfigurartion {
   }
 
   @Bean
-  public FindAllProductsUseCase findAllProductsUseCase(
-      ProductRepository productRepository,
-      ProductApplicationMapper productApplicationMapper) {
-    return new FindAllProductsUseCase(productRepository, productApplicationMapper);
-  }
-
-  @Bean
   public FindProductByIdUseCase findProductByIdUseCase(
       ProductRepository productRepository,
       ProductApplicationMapper productApplicationMapper) {
     return new FindProductByIdUseCase(productRepository, productApplicationMapper);
+  }
+
+  @Bean
+  public SearchProductsQueryHandler searchProductsQueryHandler(
+      ProductRepository productRepository,
+      ProductApplicationMapper mapper) {
+    return new SearchProductsQueryHandler(productRepository, mapper);
   }
 
   @Bean

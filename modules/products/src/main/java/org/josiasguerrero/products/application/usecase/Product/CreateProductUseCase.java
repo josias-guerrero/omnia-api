@@ -106,8 +106,8 @@ public class CreateProductUseCase {
   private PropertyId findOrCreateProperty(String name) {
     return propertyRepository.findByName(name).map(Property::getId).orElseGet(() -> {
       Property newProperty = new Property(name);
-      propertyRepository.save(newProperty);
-      return newProperty.getId();
+      Property savedProperty = propertyRepository.save(newProperty);
+      return savedProperty.getId();
     });
   }
 }

@@ -60,7 +60,7 @@ public class PropertyController {
 
   @PutMapping("/{id}")
   public ResponseEntity<PropertyResponse> update(@PathVariable("id") Integer id, UpdatePropertyRequest request) {
-    var response = updatePropertyUseCase.exceute(id, request);
+    var response = updatePropertyUseCase.execute(id, request);
     return ResponseEntity.ok(response);
   }
 }

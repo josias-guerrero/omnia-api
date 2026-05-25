@@ -1,8 +1,10 @@
 package org.josiasguerrero.products.infrastructure.persistence.repository;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
@@ -22,18 +24,28 @@ import org.josiasguerrero.products.infrastructure.persistence.entity.ProductJpaE
 import org.josiasguerrero.products.infrastructure.persistence.entity.ProductPropertyJpaEntity;
 import org.josiasguerrero.products.infrastructure.persistence.entity.PropertyJpaEntity;
 import org.josiasguerrero.products.infrastructure.persistence.mapper.ProductPersistenceMapper;
+import org.josiasguerrero.shared.domain.criteria.Criteria;
+import org.josiasguerrero.shared.domain.criteria.Filter;
 import org.josiasguerrero.shared.domain.pagination.Page;
 import org.josiasguerrero.shared.domain.pagination.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.TypedQuery;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
 import lombok.RequiredArgsConstructor;
 
 @Component
 @RequiredArgsConstructor
 public class ProductRepositoryImpl implements ProductRepository {
 
+  private final EntityManager entityManager;
   private final ProductJpaRepository jpaRepository;
   private final CategoryJpaRepository categoryRepository;
   private final PropertyJpaRepository propertyRepository;
@@ -63,16 +75,22 @@ public class ProductRepositoryImpl implements ProductRepository {
     }
 
     // 1. Preload Property definitions for all properties in the domain object
-    List<Integer> propertyIds = product.getProperties().keySet().stream()
-        .map(PropertyId::value)
-        .toList();
+    List<Integer> propertyIds = product.getProperties() == null ? List.of()
+        : product.getProperties().keySet().stream()
+            .filter(Objects::nonNull)
+            .map(PropertyId::value)
+            .filter(Objects::nonNull)
+            .toList();
 
     Map<Integer, PropertyJpaEntity> propertiesDefinitionMap = propertyRepository
         .findAllById(propertyIds).stream().collect(Collectors.toMap(PropertyJpaEntity::getId, p -> p));
 
     // 2. Identify properties to REMOVE (present in JPA but not in Domain)
     Set<Integer> domainPropertyIds = new HashSet<>(propertyIds);
-    List<ProductPropertyJpaEntity> toRemove = entity.getProperties().stream()
+    Set<ProductPropertyJpaEntity> properties = entity.getProperties() != null ? entity.getProperties()
+        : new HashSet<>();
+
+    List<ProductPropertyJpaEntity> toRemove = properties.stream()
         .filter(p -> !domainPropertyIds.contains(p.getProperty().getId()))
         .toList();
 
@@ -80,7 +98,7 @@ public class ProductRepositoryImpl implements ProductRepository {
 
     // 3. Update existing or Add new properties
     product.getProperties().forEach((propId, propValue) -> {
-      Integer id = propId.value();
+      Integer id = propId.value() != null ? propId.value() : null;
       PropertyJpaEntity definition = propertiesDefinitionMap.get(id);
 
       if (definition == null) {
@@ -142,6 +160,102 @@ public class ProductRepositoryImpl implements ProductRepository {
         .build();
 
     entity.setBrandId(brandStub);
+  }
+
+  @Override
+  public Page<Product> findByCriteria(Criteria criteria) {
+    CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+
+    // Total
+    CriteriaQuery<Long> countQuery = cb.createQuery(Long.class);
+    Root<ProductJpaEntity> countRoot = countQuery.from(ProductJpaEntity.class);
+    countQuery.select(cb.count(countRoot));
+    countQuery.where(buildPredicates(criteria.getFilters(), cb, countRoot));
+
+    Long totalElements = entityManager.createQuery(countQuery).getSingleResult();
+
+    // Results
+
+    CriteriaQuery<ProductJpaEntity> query = cb.createQuery(ProductJpaEntity.class);
+    Root<ProductJpaEntity> root = query.from(ProductJpaEntity.class);
+    query.select(root);
+    query.where(buildPredicates(criteria.getFilters(), cb, root));
+
+    if (criteria.getOrder() != null) {
+      switch (criteria.getOrder().type()) {
+        case ASC -> query.orderBy(cb.asc(root.get(criteria.getOrder().field())));
+        case DESC -> query.orderBy(cb.desc(root.get(criteria.getOrder().field())));
+      }
+    }
+
+    TypedQuery<ProductJpaEntity> typedQuery = entityManager.createQuery(query);
+    typedQuery.setFirstResult(criteria.getPageRequest().offset());
+    typedQuery.setMaxResults(criteria.getPageRequest().size());
+
+    List<Product> products = typedQuery.getResultList().stream()
+        .map(mapper::toDomain)
+        .toList();
+
+    return Page.of(products, criteria.getPageRequest(), totalElements);
+  }
+
+  private Predicate[] buildPredicates(
+      List<Filter> filters,
+      CriteriaBuilder cb,
+      Root<ProductJpaEntity> root) {
+    List<Predicate> predicates = new ArrayList<>();
+
+    for (Filter filter : filters) {
+      if (filter.value() == null || filter.value().isBlank()) {
+        continue;
+      }
+
+      predicates.add(switch (filter.operator()) {
+        case EQUAL -> {
+          if (filter.field().contains(".")) {
+            String[] parts = filter.field().split("\\.");
+            yield cb.equal(root.get(parts[0]).get(parts[1]),
+                parseValue(filter.value(), parts[1]));
+          } else {
+            yield cb.equal(root.get(filter.field()), filter.value());
+          }
+        }
+
+        case NOT_EQUAL -> cb.notEqual(root.get(filter.field()), filter.value());
+        case GREATER_THAN -> cb.greaterThan(root.get(filter.field()), filter.value());
+        case GREATER_THAN_OR_EQUAL ->
+          cb.greaterThanOrEqualTo(root.get(filter.field()), filter.value());
+        case LESS_THAN -> cb.lessThan(root.get(filter.field()), filter.value());
+        case LESS_THAN_OR_EQUAL ->
+          cb.lessThanOrEqualTo(root.get(filter.field()), filter.value());
+        case CONTAINS ->
+          cb.like(cb.lower(root.get(filter.field())),
+              "%" + filter.value().toLowerCase() + "%");
+        case NOT_CONTAINS ->
+          cb.notLike(cb.lower(root.get(filter.field())),
+              "%" + filter.value().toLowerCase() + "%");
+        case IN -> root.get(filter.field()).in(List.of(filter.value().split(",")));
+        case NOT_IN -> cb.not(root.get(filter.field()).in(List.of(filter.value().split(","))));
+
+        // ManyToManyRelations
+
+        case ANY_IN -> {
+          List<Long> categoryIds = filter.getValueAsLongList();
+          Join<ProductJpaEntity, CategoryJpaEntity> categoryJoin = root.join(filter.field());
+          yield categoryJoin.get("id").in(categoryIds);
+        }
+
+        case MEMBER_OF -> {
+          Join<ProductJpaEntity, CategoryJpaEntity> categoryJoin = root.join(filter.field());
+          yield cb.equal(categoryJoin.get("id"), Long.parseLong(filter.value()));
+        }
+        case NOT_MEMBER_OF -> {
+          Join<ProductJpaEntity, CategoryJpaEntity> categoryJoin = root.join(filter.field());
+          yield cb.notEqual(categoryJoin.get("id"), Long.parseLong(filter.value()));
+        }
+      });
+    }
+    return predicates.toArray(new Predicate[0]);
   }
 
   @Override
@@ -228,6 +342,20 @@ public class ProductRepositoryImpl implements ProductRepository {
     List<Product> products = springPage.map(mapper::toDomain).getContent();
 
     return Page.of(products, pageRequest, springPage.getTotalElements());
+  }
+
+  /**
+   * Parse values on type
+   * 
+   * @param value
+   * @param fieldName
+   * @return
+   */
+  private Object parseValue(String value, String fieldName) {
+    if (fieldName.equalsIgnoreCase("id")) {
+      return Long.parseLong(value);
+    }
+    return value;
   }
 
 }

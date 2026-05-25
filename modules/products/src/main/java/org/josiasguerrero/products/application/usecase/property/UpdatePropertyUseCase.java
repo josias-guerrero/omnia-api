@@ -17,7 +17,7 @@ public class UpdatePropertyUseCase {
   private PropertyRepository repository;
   private DtoValidator validator;
 
-  public PropertyResponse exceute(Integer propId, UpdatePropertyRequest request) {
+  public PropertyResponse execute(Integer propId, UpdatePropertyRequest request) {
     validator.validate(request);
 
     if (!repository.existsByName(request.name())) {
