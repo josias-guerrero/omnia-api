@@ -1,9 +1,11 @@
 package org.josiasguerrero.products.application.usecase.Product;
 
+import java.util.HashSet;
 import org.josiasguerrero.products.application.dto.request.CreateProductRequest;
 import org.josiasguerrero.products.application.dto.response.ProductResponse;
 import org.josiasguerrero.products.application.mapper.ProductApplicationMapper;
 import org.josiasguerrero.products.domain.entity.Product;
+import org.josiasguerrero.products.domain.entity.ProductVariant;
 import org.josiasguerrero.products.domain.entity.Property;
 import org.josiasguerrero.products.domain.exception.DuplicateSkuException;
 import org.josiasguerrero.products.domain.port.BrandRepository;
@@ -14,9 +16,12 @@ import org.josiasguerrero.products.domain.valueobject.Barcode;
 import org.josiasguerrero.products.domain.valueobject.BrandId;
 import org.josiasguerrero.products.domain.valueobject.CategoryId;
 import org.josiasguerrero.products.domain.valueobject.ProductId;
+import org.josiasguerrero.products.domain.valueobject.ProductVariantId;
 import org.josiasguerrero.products.domain.valueobject.PropertyId;
 import org.josiasguerrero.products.domain.valueobject.PropertyValue;
 import org.josiasguerrero.products.domain.valueobject.Sku;
+import org.josiasguerrero.products.domain.valueobject.Stock;
+import org.josiasguerrero.products.domain.valueobject.VariantAttribute;
 import org.josiasguerrero.shared.aplication.validation.DtoValidator;
 import org.josiasguerrero.shared.domain.valueobject.Money;
 
@@ -40,7 +45,6 @@ public class CreateProductUseCase {
     productRepository.save(product);
 
     return productApplicationMapper.toResponse(product);
-
   }
 
   private void validateBusinessRules(CreateProductRequest request) {
@@ -67,23 +71,21 @@ public class CreateProductUseCase {
 
   private Product createProductEntity(CreateProductRequest request) {
     ProductId id = ProductId.generate();
-    Sku sku = Sku.from(request.sku());
-    Money cost = new Money(request.cost());
-    Money price = new Money(request.price());
-
-    Product product = new Product(id, sku, request.name(), request.description(), cost, price);
-
-    if (request.barcode() != null && !request.barcode().isBlank()) {
-      product.setBarcode(new Barcode(request.barcode()));
-    }
-
-    if (request.stock() != null && request.stock() > 0) {
-      product.adjustStock(request.stock());
-    }
+    Product product = new Product(id, request.name(), request.description());
 
     if (request.brandId() != null) {
       product.assignToBrand(BrandId.from(request.brandId()));
     }
+
+    ProductVariantId variantId = ProductVariantId.generate();
+    Sku sku = Sku.from(request.sku());
+    Barcode barcode = request.barcode() != null && !request.barcode().isBlank() ? new Barcode(request.barcode()) : null;
+    Stock stock = request.stock() != null ? new Stock(request.stock()) : Stock.empty();
+    Money cost = new Money(request.cost());
+    Money price = new Money(request.price());
+
+    ProductVariant defaultVariant = new ProductVariant(variantId, sku, barcode, stock, cost, price, new HashSet<>());
+    product.getVariants().add(defaultVariant);
 
     return product;
   }
@@ -94,11 +96,12 @@ public class CreateProductUseCase {
       request.categoryIds().forEach(catId -> product.assignToCategory(CategoryId.from(catId)));
     }
 
-    // Asignar propiedades
-    if (request.properties() != null) {
+    // Asignar propiedades a la primera variante
+    if (request.properties() != null && !product.getVariants().isEmpty()) {
+      ProductVariant defaultVariant = product.getVariants().iterator().next();
       request.properties().forEach((propName, value) -> {
         PropertyId propId = findOrCreateProperty(propName);
-        product.addProperty(propId, PropertyValue.of(value));
+        defaultVariant.addProperty(new VariantAttribute(propId, PropertyValue.of(value)));
       });
     }
   }

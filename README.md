@@ -14,12 +14,12 @@
     - [4. Run tests](#4-run-tests)
   - [API Overview](#api-overview)
   - [Roadmap](#roadmap)
-    - [✅ v0.1 — Products Foundation _(current)_ {#v01}]
-    - [🔲 v0.2 — Inventory & Warehouses {#v02}]
-    - [🔲 v0.3 — Sales & Orders {#v03}]
-    - [🔲 v0.4 — Customers {#v04}]
-    - [🔲 v0.5 — Reports & Finance {#v05}]
-    - [🔲 v1.0 — Production Ready {#v10}]
+    - [✅ v0.1 — Products Foundation _(current)_](#v0-1-products-foundation-current)
+    - [🔲 v0.2 — Inventory & Warehouses](#🔲-v02-inventory-warehouses)
+    - [🔲 v0.3 — Sales & Orders](#🔲-v03-sales-orders)
+    - [🔲 v0.4 — Customers](#🔲-v04-customers)
+    - [🔲 v0.5 — Reports & Finance](#🔲-v05-reports-finance)
+    - [🔲 v1.0 — Production Ready](#🔲-v10-production-ready)
   - [Project Decisions](#project-decisions)
   - [Module Documentation](#module-documentation)
   - [Deployment](#deployment)
@@ -164,40 +164,40 @@ See each module's `README.md` for detailed endpoint documentation.
 
 ## Roadmap
 
-### ✅ v0.1 — Products Foundation _(current)_ {#v01}
+### ✅ v0.1 — Products Foundation _(current)_
 
 - Products CRUD with dynamic search and filtering
 - Brands, Categories, Properties management
 - Multi-module Gradle project structure
 - Docker + CI/CD pipeline
 
-### 🔲 v0.2 — Inventory & Warehouses {#v02}
+### 🔲 v0.2 — Inventory & Warehouses
 
 - Warehouse management (create, list, activate/deactivate)
 - Stock movement tracking (entries, exits, adjustments, transfers)
 - Stock per warehouse per product
 - Low-stock alerts
 
-### 🔲 v0.3 — Sales & Orders {#v03}
+### 🔲 v0.3 — Sales & Orders
 
 - Sales order lifecycle: Draft → Confirmed → Shipped → Delivered
 - Stock reservation on order confirmation
 - Order number generation (ORD-YYYY-NNNN)
 - Order search with filters
 
-### 🔲 v0.4 — Customers {#v04}
+### 🔲 v0.4 — Customers
 
 - Customer profiles (name, email, phone, address, tax ID)
 - Customer linking to sales orders
 
-### 🔲 v0.5 — Reports & Finance {#v05}
+### 🔲 v0.5 — Reports & Finance
 
 - Revenue summary by date range
 - Inventory valuation (stock × cost)
 - Low-stock report
 - Sales trends
 
-### 🔲 v1.0 — Production Ready {#v10}
+### 🔲 v1.0 — Production Ready
 
 - Authentication & authorization (JWT)
 - Full test coverage (unit + integration)

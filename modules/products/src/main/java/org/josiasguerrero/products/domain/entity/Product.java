@@ -1,103 +1,82 @@
 package org.josiasguerrero.products.domain.entity;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 
-import org.josiasguerrero.products.domain.valueobject.Barcode;
 import org.josiasguerrero.products.domain.valueobject.BrandId;
 import org.josiasguerrero.products.domain.valueobject.CategoryId;
 import org.josiasguerrero.products.domain.valueobject.ProductId;
-import org.josiasguerrero.products.domain.valueobject.PropertyId;
-import org.josiasguerrero.products.domain.valueobject.PropertyValue;
-import org.josiasguerrero.products.domain.valueobject.Sku;
-import org.josiasguerrero.products.domain.valueobject.Stock;
-import org.josiasguerrero.shared.domain.valueobject.Money;
 
 public class Product {
 
   private final ProductId id;
-  private Sku sku;
+
   private String name;
   private String description;
-  private Barcode barcode;
-  private Stock stock;
-  private Money cost;
-  private Money price;
+
   private final LocalDateTime createdAt;
   private LocalDateTime updatedAt;
 
   private BrandId brandId;
 
-  private Map<PropertyId, PropertyValue> properties;
+  private Set<ProductVariant> variants;
+
+  public void setName(String name) {
+    this.name = name;
+  }
+
+  public void setDescription(String description) {
+    this.description = description;
+  }
+
+  public void setUpdatedAt(LocalDateTime updatedAt) {
+    this.updatedAt = updatedAt;
+  }
+
+  public void setBrandId(BrandId brandId) {
+    this.brandId = brandId;
+  }
+
+  public Set<ProductVariant> getVariants() {
+    return variants;
+  }
+
+  public void setVariants(Set<ProductVariant> variants) {
+    this.variants = variants;
+  }
+
+  public void setCategoryIds(Set<CategoryId> categoryIds) {
+    this.categoryIds = categoryIds;
+  }
 
   private Set<CategoryId> categoryIds;
 
-  public Product(ProductId id, Sku sku, String name, String description, Money cost, Money price) {
+  public Product(
+      ProductId id,
+      String name,
+      String description) {
     this.id = id;
-    this.sku = sku;
     this.name = validateName(name);
-    validatePricing(cost, price);
     this.description = description;
-    this.cost = cost;
-    this.price = price;
-    this.stock = Stock.empty();
+
     this.categoryIds = new HashSet<>();
-    this.properties = new HashMap<>();
+    this.variants = new HashSet<>();
+
     this.createdAt = LocalDateTime.now();
     this.updatedAt = LocalDateTime.now();
   }
 
-  public Product(
-      ProductId id,
-      Sku sku,
-      String name,
-      String description,
-      Barcode barcode,
-      Money cost,
-      Money price,
-      Stock stock,
-      BrandId brandId,
-      Set<CategoryId> categoryIds,
-      Map<PropertyId, PropertyValue> properties,
-      LocalDateTime createdAt,
-      LocalDateTime updatedAt) {
+  public Product(ProductId id, String name, String description, LocalDateTime createdAt, LocalDateTime updatedAt,
+      BrandId brandId, Set<ProductVariant> variants, Set<CategoryId> categoryIds) {
     this.id = id;
-    this.sku = sku;
-    this.name = validateName(name);
+    this.name = name;
     this.description = description;
-    this.barcode = barcode;
-    validatePricing(cost, price);
-    this.cost = cost;
-    this.price = price;
-    this.stock = stock;
-    this.brandId = brandId;
-    this.categoryIds = new HashSet<>(categoryIds);
-    this.properties = new HashMap<>(properties);
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
-  }
-
-  public void increaseStock(int amount) {
-    this.stock = this.stock.increase(amount);
-    this.updatedAt = LocalDateTime.now();
-  }
-
-  public void decreaseStock(int amount) {
-    this.stock = this.stock.decrease(amount);
-    this.updatedAt = LocalDateTime.now();
-  }
-
-  public void adjustStock(int amount) {
-    this.stock = new Stock(amount);
-    this.updatedAt = LocalDateTime.now();
-  }
-
-  public void setBarcode(Barcode barcode) {
-    this.barcode = barcode;
-    this.updatedAt = LocalDateTime.now();
+    this.brandId = brandId;
+    this.variants = variants;
+    this.categoryIds = categoryIds;
   }
 
   public void assignToBrand(BrandId brandId) {
@@ -112,25 +91,6 @@ public class Product {
 
   public void clearCategories() {
     this.categoryIds.clear();
-  }
-
-  public void clearProperties() {
-    this.properties.clear();
-  }
-
-  public void addProperty(PropertyId propertyId, PropertyValue propertyValue) {
-    this.properties.put(propertyId, propertyValue);
-    this.updatedAt = LocalDateTime.now();
-  }
-
-  public void removeProperty(PropertyId propertyId) {
-    this.properties.remove(propertyId);
-    this.updatedAt = LocalDateTime.now();
-  }
-
-  public void changeSku(Sku sku) {
-    this.sku = sku;
-    this.updatedAt = LocalDateTime.now();
   }
 
   public void rename(String name) {
@@ -149,21 +109,6 @@ public class Product {
     this.updatedAt = LocalDateTime.now();
   }
 
-  public void updatePricing(Money newCost, Money newPrice) {
-    validatePricing(newCost, newPrice);
-    this.cost = newCost;
-    this.price = newPrice;
-    this.updatedAt = LocalDateTime.now();
-  }
-
-  public boolean hasStock() {
-    return this.stock.isAvailable();
-  }
-
-  public boolean hasSufficientStock(int requiredAmount) {
-    return this.stock.isSufficient(requiredAmount);
-  }
-
   private String validateName(String name) {
     if (name == null || name.isBlank()) {
       throw new IllegalArgumentException("Product name cannot be null or empty");
@@ -175,23 +120,8 @@ public class Product {
     return trimmed;
   }
 
-  private void validatePricing(Money cost, Money price) {
-    if (cost == null || price == null) {
-      throw new IllegalArgumentException("Cost and price cannot be null");
-    }
-    if (price.isGreaterThan(cost)) {
-      return;
-    }
-
-    throw new IllegalArgumentException("Price must be greater than cost");
-  }
-
   public ProductId getId() {
     return id;
-  }
-
-  public Sku getSku() {
-    return sku;
   }
 
   public String getName() {
@@ -200,22 +130,6 @@ public class Product {
 
   public String getDescription() {
     return description;
-  }
-
-  public Barcode getBarcode() {
-    return barcode;
-  }
-
-  public Stock getStock() {
-    return stock;
-  }
-
-  public Money getCost() {
-    return cost;
-  }
-
-  public Money getPrice() {
-    return price;
   }
 
   public LocalDateTime getCreatedAt() {
@@ -233,9 +147,4 @@ public class Product {
   public Set<CategoryId> getCategoryIds() {
     return categoryIds;
   }
-
-  public Map<PropertyId, PropertyValue> getProperties() {
-    return properties;
-  }
-
 }

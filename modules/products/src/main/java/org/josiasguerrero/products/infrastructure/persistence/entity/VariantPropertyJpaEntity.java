@@ -1,6 +1,5 @@
 package org.josiasguerrero.products.infrastructure.persistence.entity;
 
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -18,27 +17,26 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "product_property", uniqueConstraints = @UniqueConstraint(columnNames = { "product_id", "property_id" }))
+@Table(name = "variant_property", uniqueConstraints = @UniqueConstraint(columnNames = { "variant_id", "property_id" }))
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-@EqualsAndHashCode(of = { "product", "property" })
-public class ProductPropertyJpaEntity {
+@EqualsAndHashCode(of = { "variant", "property" })
+public class VariantPropertyJpaEntity {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "product_id", nullable = false)
-  private ProductJpaEntity product;
+  @JoinColumn(name = "variant_id")
+  private ProductVariantJpaEntity variant;
 
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "property_id", nullable = false)
+  @JoinColumn(name = "property_id")
   private PropertyJpaEntity property;
 
-  @Column(nullable = false, length = 100)
   private String value;
 }

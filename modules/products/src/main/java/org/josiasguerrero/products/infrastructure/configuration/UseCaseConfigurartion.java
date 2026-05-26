@@ -34,8 +34,6 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class UseCaseConfigurartion {
-  // TODO: FindAllUsecases for Brand, Category and Property
-
   // ========== PRODUCT USE CASES ==========
   @Bean
   public CreateProductUseCase createProductUseCase(

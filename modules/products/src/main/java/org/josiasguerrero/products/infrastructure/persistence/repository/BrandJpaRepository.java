@@ -16,6 +16,6 @@ public interface BrandJpaRepository extends JpaRepository<BrandJpaEntity, Intege
   boolean existsByName(String name);
 
   @Query("SELECT CASE WHEN COUNT(p) > 0 THEN true ELSE false END " +
-      "FROM ProductJpaEntity p WHERE p.brandId.id = :brandId")
+      "FROM ProductJpaEntity p WHERE p.brand.id = :brandId")
   boolean hasProducts(@Param("brandId") Integer brandId);
 }

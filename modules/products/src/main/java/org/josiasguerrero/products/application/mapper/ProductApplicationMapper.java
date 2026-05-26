@@ -36,26 +36,35 @@ public class ProductApplicationMapper {
         .flatMap(Optional::stream)
         .collect(Collectors.toSet());
 
-    // Propiedades
-    Map<String, String> properties = product.getProperties().entrySet().stream()
-        .map(entry -> propertyRepository.findById(entry.getKey())
-            .map(prop -> Map.entry(prop.getName(), entry.getValue().value())))
-        .flatMap(Optional::stream)
-        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    // Obtener la primera variante como por defecto
+    var firstVariant = product.getVariants().stream().findFirst();
 
-    // Barcode seguro
-    String barcode = product.getBarcode() != null ? product.getBarcode().value() : null;
+    // Propiedades mapeadas de la primera variante
+    Map<String, String> properties = firstVariant
+        .map(v -> v.getProperties().stream()
+            .map(attr -> propertyRepository.findById(attr.propertyId())
+                .map(prop -> Map.entry(prop.getName(), attr.value().value())))
+            .flatMap(Optional::stream)
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (a, b) -> a)))
+        .orElse(Map.of());
+
+    // Barcode y otros campos seguros de la primera variante
+    String sku = firstVariant.map(v -> v.getSku().value()).orElse(null);
+    String barcode = firstVariant.flatMap(v -> Optional.ofNullable(v.getBarcode()).map(b -> b.value())).orElse(null);
+    java.math.BigDecimal cost = firstVariant.map(v -> v.getCost().amount()).orElse(java.math.BigDecimal.ZERO);
+    java.math.BigDecimal price = firstVariant.map(v -> v.getPrice().amount()).orElse(java.math.BigDecimal.ZERO);
+    Integer stock = firstVariant.map(v -> v.getStock().quantity()).orElse(0);
 
     // Construcción del DTO final
     return new ProductResponse(
         product.getId().value().toString(),
-        product.getSku().value(),
+        sku,
         product.getName(),
         product.getDescription(),
         barcode,
-        product.getCost().amount(),
-        product.getPrice().amount(),
-        product.getStock().quantity(),
+        cost,
+        price,
+        stock,
         brandDto,
         categories,
         properties,

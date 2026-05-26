@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -16,12 +17,11 @@ import org.josiasguerrero.products.domain.port.ProductRepository;
 import org.josiasguerrero.products.domain.valueobject.BrandId;
 import org.josiasguerrero.products.domain.valueobject.CategoryId;
 import org.josiasguerrero.products.domain.valueobject.ProductId;
-import org.josiasguerrero.products.domain.valueobject.PropertyId;
 import org.josiasguerrero.products.domain.valueobject.Sku;
 import org.josiasguerrero.products.infrastructure.persistence.entity.BrandJpaEntity;
 import org.josiasguerrero.products.infrastructure.persistence.entity.CategoryJpaEntity;
 import org.josiasguerrero.products.infrastructure.persistence.entity.ProductJpaEntity;
-import org.josiasguerrero.products.infrastructure.persistence.entity.ProductPropertyJpaEntity;
+import org.josiasguerrero.products.infrastructure.persistence.entity.VariantPropertyJpaEntity;
 import org.josiasguerrero.products.infrastructure.persistence.entity.PropertyJpaEntity;
 import org.josiasguerrero.products.infrastructure.persistence.mapper.ProductPersistenceMapper;
 import org.josiasguerrero.shared.domain.criteria.Criteria;
@@ -61,65 +61,100 @@ public class ProductRepositoryImpl implements ProductRepository {
 
     syncCategories(product, entity);
 
-    syncProperties(product, entity);
+    syncVariants(product, entity);
 
     syncBrand(entity, product);
 
     jpaRepository.save(entity);
   }
 
-  private void syncProperties(Product product, ProductJpaEntity entity) {
-    if (product.getProperties() == null) {
-      entity.clearProperties();
-      return;
+  private void syncVariants(Product product, ProductJpaEntity entity) {
+    if (entity.getVariants() == null) {
+      entity.setVariants(new HashSet<>());
     }
 
-    // 1. Preload Property definitions for all properties in the domain object
-    List<Integer> propertyIds = product.getProperties() == null ? List.of()
-        : product.getProperties().keySet().stream()
-            .filter(Objects::nonNull)
-            .map(PropertyId::value)
-            .filter(Objects::nonNull)
-            .toList();
+    Map<UUID, org.josiasguerrero.products.infrastructure.persistence.entity.ProductVariantJpaEntity> existingEntitiesMap = entity
+        .getVariants().stream()
+        .collect(Collectors.toMap(
+            org.josiasguerrero.products.infrastructure.persistence.entity.ProductVariantJpaEntity::getId,
+            Function.identity()));
+
+    Set<org.josiasguerrero.products.infrastructure.persistence.entity.ProductVariantJpaEntity> updatedVariants = new HashSet<>();
+
+    for (org.josiasguerrero.products.domain.entity.ProductVariant domainVariant : product.getVariants()) {
+      org.josiasguerrero.products.infrastructure.persistence.entity.ProductVariantJpaEntity variantEntity = existingEntitiesMap
+          .get(domainVariant.getId().value());
+
+      if (variantEntity == null) {
+        variantEntity = new org.josiasguerrero.products.infrastructure.persistence.entity.ProductVariantJpaEntity();
+        variantEntity.setId(domainVariant.getId().value());
+        variantEntity.setProduct(entity);
+        variantEntity.setProperties(new HashSet<>());
+      }
+
+      variantEntity.setSku(domainVariant.getSku().value());
+      variantEntity.setBarcode(domainVariant.getBarcode() != null ? domainVariant.getBarcode().value() : null);
+      variantEntity.setStock(domainVariant.getStock().quantity());
+      variantEntity.setCost(domainVariant.getCost().amount());
+      variantEntity.setPrice(domainVariant.getPrice().amount());
+      variantEntity.setCreatedAt(domainVariant.getCreatedAt());
+      variantEntity.setUpdatedAt(domainVariant.getUpdatedAt());
+
+      syncVariantProperties(domainVariant, variantEntity);
+
+      updatedVariants.add(variantEntity);
+    }
+
+    entity.getVariants().clear();
+    entity.getVariants().addAll(updatedVariants);
+  }
+
+  private void syncVariantProperties(org.josiasguerrero.products.domain.entity.ProductVariant domainVariant,
+      org.josiasguerrero.products.infrastructure.persistence.entity.ProductVariantJpaEntity variantEntity) {
+    if (variantEntity.getProperties() == null) {
+      variantEntity.setProperties(new HashSet<>());
+    }
+
+    List<Integer> propertyIds = domainVariant.getProperties().stream()
+        .map(attr -> attr.propertyId().value())
+        .filter(Objects::nonNull)
+        .toList();
 
     Map<Integer, PropertyJpaEntity> propertiesDefinitionMap = propertyRepository
-        .findAllById(propertyIds).stream().collect(Collectors.toMap(PropertyJpaEntity::getId, p -> p));
+        .findAllById(propertyIds).stream()
+        .collect(Collectors.toMap(PropertyJpaEntity::getId, Function.identity()));
 
-    // 2. Identify properties to REMOVE (present in JPA but not in Domain)
-    Set<Integer> domainPropertyIds = new HashSet<>(propertyIds);
-    Set<ProductPropertyJpaEntity> properties = entity.getProperties() != null ? entity.getProperties()
-        : new HashSet<>();
+    Set<Integer> domainPropertyIds = domainVariant.getProperties().stream()
+        .map(attr -> attr.propertyId().value())
+        .collect(Collectors.toSet());
 
-    List<ProductPropertyJpaEntity> toRemove = properties.stream()
+    List<VariantPropertyJpaEntity> toRemove = variantEntity.getProperties().stream()
         .filter(p -> !domainPropertyIds.contains(p.getProperty().getId()))
         .toList();
 
-    toRemove.forEach(entity::removeProperty);
+    toRemove.forEach(variantEntity::removeProperty);
 
-    // 3. Update existing or Add new properties
-    product.getProperties().forEach((propId, propValue) -> {
-      Integer id = propId.value() != null ? propId.value() : null;
+    domainVariant.getProperties().forEach(attr -> {
+      Integer id = attr.propertyId().value();
       PropertyJpaEntity definition = propertiesDefinitionMap.get(id);
 
       if (definition == null) {
-        throw new PropertyNotFoundException(propId);
+        throw new PropertyNotFoundException(attr.propertyId());
       }
 
-      // Check if it already exists
-      Optional<ProductPropertyJpaEntity> existingProp = entity.getProperties().stream()
+      Optional<VariantPropertyJpaEntity> existingProp = variantEntity.getProperties().stream()
           .filter(p -> p.getProperty().getId().equals(id))
           .findFirst();
 
       if (existingProp.isPresent()) {
-        // UPDATE
-        existingProp.get().setValue(propValue.value());
+        existingProp.get().setValue(attr.value().value());
       } else {
-        // ADD
-        ProductPropertyJpaEntity newProp = ProductPropertyJpaEntity.builder()
+        VariantPropertyJpaEntity newProp = VariantPropertyJpaEntity.builder()
+            .variant(variantEntity)
             .property(definition)
-            .value(propValue.value())
+            .value(attr.value().value())
             .build();
-        entity.addProperty(newProp);
+        variantEntity.addProperty(newProp);
       }
     });
   }
@@ -145,12 +180,12 @@ public class ProductRepositoryImpl implements ProductRepository {
 
   private void syncBrand(ProductJpaEntity entity, Product product) {
     if (product.getBrandId() == null) {
-      entity.setBrandId(null);
+      entity.setBrand(null);
       return;
     }
 
-    if (entity.getBrandId() != null &&
-        product.getBrandId().value().equals(entity.getBrandId().getId())) {
+    if (entity.getBrand() != null &&
+        product.getBrandId().value().equals(entity.getBrand().getId())) {
       return;
     }
 
@@ -159,7 +194,7 @@ public class ProductRepositoryImpl implements ProductRepository {
         .id(product.getBrandId().value())
         .build();
 
-    entity.setBrandId(brandStub);
+    entity.setBrand(brandStub);
   }
 
   @Override
@@ -222,12 +257,38 @@ public class ProductRepositoryImpl implements ProductRepository {
         }
 
         case NOT_EQUAL -> cb.notEqual(root.get(filter.field()), filter.value());
-        case GREATER_THAN -> cb.greaterThan(root.get(filter.field()), filter.value());
-        case GREATER_THAN_OR_EQUAL ->
-          cb.greaterThanOrEqualTo(root.get(filter.field()), filter.value());
-        case LESS_THAN -> cb.lessThan(root.get(filter.field()), filter.value());
-        case LESS_THAN_OR_EQUAL ->
-          cb.lessThanOrEqualTo(root.get(filter.field()), filter.value());
+        case GREATER_THAN -> {
+          if (filter.field().equals("stock")) {
+            Join<ProductJpaEntity, org.josiasguerrero.products.infrastructure.persistence.entity.ProductVariantJpaEntity> variantJoin = root
+                .join("variants");
+            yield cb.greaterThan(variantJoin.get("stock"), Integer.parseInt(filter.value()));
+          }
+          yield cb.greaterThan(root.get(filter.field()), filter.value());
+        }
+        case GREATER_THAN_OR_EQUAL -> {
+          if (filter.field().equals("stock")) {
+            Join<ProductJpaEntity, org.josiasguerrero.products.infrastructure.persistence.entity.ProductVariantJpaEntity> variantJoin = root
+                .join("variants");
+            yield cb.greaterThanOrEqualTo(variantJoin.get("stock"), Integer.parseInt(filter.value()));
+          }
+          yield cb.greaterThanOrEqualTo(root.get(filter.field()), filter.value());
+        }
+        case LESS_THAN -> {
+          if (filter.field().equals("stock")) {
+            Join<ProductJpaEntity, org.josiasguerrero.products.infrastructure.persistence.entity.ProductVariantJpaEntity> variantJoin = root
+                .join("variants");
+            yield cb.lessThan(variantJoin.get("stock"), Integer.parseInt(filter.value()));
+          }
+          yield cb.lessThan(root.get(filter.field()), filter.value());
+        }
+        case LESS_THAN_OR_EQUAL -> {
+          if (filter.field().equals("stock")) {
+            Join<ProductJpaEntity, org.josiasguerrero.products.infrastructure.persistence.entity.ProductVariantJpaEntity> variantJoin = root
+                .join("variants");
+            yield cb.lessThanOrEqualTo(variantJoin.get("stock"), Integer.parseInt(filter.value()));
+          }
+          yield cb.lessThanOrEqualTo(root.get(filter.field()), filter.value());
+        }
         case CONTAINS ->
           cb.like(cb.lower(root.get(filter.field())),
               "%" + filter.value().toLowerCase() + "%");
@@ -310,13 +371,10 @@ public class ProductRepositoryImpl implements ProductRepository {
   }
 
   private void syncBasicFieds(ProductJpaEntity entity, Product product) {
-    entity.setSku(product.getSku().value());
     entity.setName(product.getName());
     entity.setDescription(product.getDescription());
-    entity.setBarcode(product.getBarcode() != null ? product.getBarcode().value() : null);
-    entity.setCost(product.getCost().amount());
-    entity.setPrice(product.getPrice().amount());
-    entity.setStock(product.getStock().quantity());
+    entity.setCreatedAt(product.getCreatedAt());
+    entity.setUpdatedAt(product.getUpdatedAt());
   }
 
   /**

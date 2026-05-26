@@ -24,7 +24,7 @@ public class SearchProductsQueryHandler {
 
     // Solo agregar filtros si tienen valor
     if (query.brandId() != null) {
-      builder.filter(Filter.equal("brandId.id", String.valueOf(query.brandId())));
+      builder.filter(Filter.equal("brand.id", String.valueOf(query.brandId())));
     }
 
     if (query.categoryIds() != null && !query.categoryIds().isEmpty()) {

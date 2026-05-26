@@ -14,16 +14,19 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface ProductJpaRepository extends JpaRepository<ProductJpaEntity, UUID> {
 
-  Optional<ProductJpaEntity> findBySku(String sku);
+  @Query("SELECT p FROM ProductJpaEntity p JOIN p.variants v WHERE v.sku = :sku")
+  Optional<ProductJpaEntity> findBySku(@Param("sku") String sku);
 
-  boolean existsBySku(String sku);
+  @Query("SELECT COUNT(p) > 0 FROM ProductJpaEntity p JOIN p.variants v WHERE v.sku = :sku")
+  boolean existsBySku(@Param("sku") String sku);
 
   @Query("Select p FROM ProductJpaEntity p JOIN p.categories c WHERE c.id = :categoryId")
   Page<ProductJpaEntity> findByCategory(@Param("categoryId") Integer categoryId, Pageable pageRequest);
 
   Page<ProductJpaEntity> findByBrandId(Integer brandId, Pageable pageRequest);
 
-  Page<ProductJpaEntity> findByStockLessThan(Integer threshold, Pageable pageRequest);
+  @Query("SELECT DISTINCT p FROM ProductJpaEntity p JOIN p.variants v WHERE v.stock < :threshold")
+  Page<ProductJpaEntity> findByStockLessThan(@Param("threshold") Integer threshold, Pageable pageRequest);
 
   @Query("Select p FROM ProductJpaEntity p WHERE LOWER(p.name) LIKE LOWER(CONCAT('%', :name, '%'))")
   Page<ProductJpaEntity> findByNameContaining(@Param("name") String name, Pageable pageRequest);

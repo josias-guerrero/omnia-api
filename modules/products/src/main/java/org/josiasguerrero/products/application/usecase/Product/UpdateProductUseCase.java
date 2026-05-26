@@ -4,11 +4,14 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.josiasguerrero.products.application.dto.request.UpdateProductRequest;
 import org.josiasguerrero.products.application.dto.response.ProductResponse;
 import org.josiasguerrero.products.application.mapper.ProductApplicationMapper;
 import org.josiasguerrero.products.domain.entity.Product;
+import org.josiasguerrero.products.domain.entity.ProductVariant;
 import org.josiasguerrero.products.domain.entity.Property;
 import org.josiasguerrero.products.domain.exception.CategoryNotFoundException;
 import org.josiasguerrero.products.domain.exception.DuplicateSkuException;
@@ -23,6 +26,7 @@ import org.josiasguerrero.products.domain.valueobject.ProductId;
 import org.josiasguerrero.products.domain.valueobject.PropertyId;
 import org.josiasguerrero.products.domain.valueobject.PropertyValue;
 import org.josiasguerrero.products.domain.valueobject.Sku;
+import org.josiasguerrero.products.domain.valueobject.VariantAttribute;
 import org.josiasguerrero.shared.aplication.validation.DtoValidator;
 import org.josiasguerrero.shared.domain.valueobject.Money;
 import org.josiasguerrero.products.domain.valueobject.Barcode;
@@ -62,7 +66,6 @@ public class UpdateProductUseCase {
 
     validateAllCategoriesExist(categoryIds);
 
-    // Limpia las categorías actuales y agrega las nuevas
     product.clearCategories();
     categoryIds.forEach(catId -> product.assignToCategory(CategoryId.from(catId)));
   }
@@ -72,29 +75,36 @@ public class UpdateProductUseCase {
       return;
     }
 
-    Map<PropertyId, PropertyValue> currentProperties = product.getProperties();
+    ProductVariant defaultVariant = product.getVariants().stream().findFirst()
+        .orElseThrow(() -> new IllegalStateException("Product has no variants"));
 
-    // Convertir el request a Map<PropertyId, PropertyValue>
+    Set<VariantAttribute> currentProperties = defaultVariant.getProperties();
+
     Map<PropertyId, PropertyValue> newProperties = new HashMap<>();
     newPropertiesRequest.forEach((propName, value) -> {
       PropertyId propId = findOrCreateProperty(propName);
       newProperties.put(propId, PropertyValue.of(value));
     });
 
-    // 1. Identificar propiedades a eliminar (están en current pero NO en new)
-    Set<PropertyId> toRemove = new HashSet<>(currentProperties.keySet());
+    Set<PropertyId> currentPropertyIds = currentProperties.stream()
+        .map(VariantAttribute::propertyId)
+        .collect(Collectors.toSet());
+
+    Set<PropertyId> toRemove = new HashSet<>(currentPropertyIds);
     toRemove.removeAll(newProperties.keySet());
 
-    // 2. Eliminar las propiedades que ya no están
-    toRemove.forEach(product::removeProperty);
+    toRemove.forEach(defaultVariant::removeProperty);
 
-    // 3. Agregar o actualizar propiedades
     newProperties.forEach((propId, propValue) -> {
-      PropertyValue currentValue = currentProperties.get(propId);
+      Optional<VariantAttribute> currentAttr = currentProperties.stream()
+          .filter(attr -> attr.propertyId().equals(propId))
+          .findFirst();
 
-      // Solo actualiza si es nueva O si el valor cambió
-      if (currentValue == null || !currentValue.equals(propValue)) {
-        product.addProperty(propId, propValue);
+      if (currentAttr.isEmpty() || !currentAttr.get().value().equals(propValue)) {
+        if (currentAttr.isPresent()) {
+          defaultVariant.removeProperty(propId);
+        }
+        defaultVariant.addProperty(new VariantAttribute(propId, propValue));
       }
     });
   }
@@ -119,32 +129,33 @@ public class UpdateProductUseCase {
   }
 
   private void validateBusinessRules(Product product, UpdateProductRequest request) {
+    ProductVariant defaultVariant = product.getVariants().stream().findFirst()
+        .orElseThrow(() -> new IllegalStateException("Product has no variants"));
+
     if (request.sku() != null && !request.sku().isBlank()) {
       Sku newSku = Sku.from(request.sku());
 
-      if (!product.getSku().equals(newSku)) {
+      if (!defaultVariant.getSku().equals(newSku)) {
         if (productRepository.existsBySku(newSku)) {
           throw new DuplicateSkuException(newSku);
         }
       }
     }
 
-    // Validar que la marca exista (si viene)
     if (request.brandId() != null && !request.brandId().isBlank()) {
       BrandId brandId = BrandId.from(request.brandId());
       brandRepository.findById(brandId)
           .orElseThrow(() -> new IllegalArgumentException("Brand not found: " + brandId));
     }
 
-    // Validar que price > cost (si vienen ambos o uno de los dos)
     if (request.cost() != null || request.price() != null) {
       Money newCost = request.cost() != null
           ? new Money(request.cost())
-          : product.getCost();
+          : defaultVariant.getCost();
 
       Money newPrice = request.price() != null
           ? new Money(request.price())
-          : product.getPrice();
+          : defaultVariant.getPrice();
 
       if (!newPrice.isGreaterThan(newCost)) {
         throw new IllegalArgumentException("Price must be greater than cost");
@@ -153,9 +164,11 @@ public class UpdateProductUseCase {
   }
 
   private void updateProductFields(Product product, UpdateProductRequest request) {
+    ProductVariant defaultVariant = product.getVariants().stream().findFirst()
+        .orElseThrow(() -> new IllegalStateException("Product has no variants"));
 
     if (request.sku() != null && !request.sku().isBlank()) {
-      product.changeSku(Sku.from(request.sku()));
+      defaultVariant.changeSku(Sku.from(request.sku()));
     }
 
     if (request.name() != null && !request.name().isBlank()) {
@@ -167,17 +180,17 @@ public class UpdateProductUseCase {
     }
 
     if (request.barcode() != null && !request.barcode().isBlank()) {
-      product.setBarcode(new Barcode(request.barcode()));
+      defaultVariant.setBarcode(new Barcode(request.barcode()));
     }
 
     if (request.cost() != null || request.price() != null) {
-      Money newCost = request.cost() != null ? new Money(request.cost()) : product.getCost();
-      Money newPrice = request.price() != null ? new Money(request.price()) : product.getPrice();
-      product.updatePricing(newCost, newPrice);
+      Money newCost = request.cost() != null ? new Money(request.cost()) : defaultVariant.getCost();
+      Money newPrice = request.price() != null ? new Money(request.price()) : defaultVariant.getPrice();
+      defaultVariant.updatePricing(newCost, newPrice);
     }
 
     if (request.stock() != null) {
-      product.adjustStock(request.stock());
+      defaultVariant.adjustStock(request.stock());
     }
 
     if (request.brandId() != null && !request.brandId().isBlank()) {
