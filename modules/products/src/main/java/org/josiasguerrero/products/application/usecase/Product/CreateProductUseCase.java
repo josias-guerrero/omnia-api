@@ -42,9 +42,9 @@ public class CreateProductUseCase {
 
     Product product = createProductEntity(request);
     assignRelations(product, request);
-    productRepository.save(product);
+    Product newProduct = productRepository.save(product);
 
-    return productApplicationMapper.toResponse(product);
+    return productApplicationMapper.toResponse(newProduct);
   }
 
   private void validateBusinessRules(CreateProductRequest request) {

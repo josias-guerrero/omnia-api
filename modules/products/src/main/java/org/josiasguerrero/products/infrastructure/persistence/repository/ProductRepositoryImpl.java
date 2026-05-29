@@ -53,7 +53,7 @@ public class ProductRepositoryImpl implements ProductRepository {
 
   @Override
   @Transactional
-  public void save(Product product) {
+  public Product save(Product product) {
 
     ProductJpaEntity entity = jpaRepository.findById(product.getId().value()).orElseGet(() -> createNewEntity(product));
 
@@ -65,7 +65,7 @@ public class ProductRepositoryImpl implements ProductRepository {
 
     syncBrand(entity, product);
 
-    jpaRepository.save(entity);
+    return mapper.toDomain(jpaRepository.save(entity));
   }
 
   private void syncVariants(Product product, ProductJpaEntity entity) {

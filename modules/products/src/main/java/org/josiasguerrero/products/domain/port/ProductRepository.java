@@ -12,7 +12,7 @@ import org.josiasguerrero.shared.domain.pagination.Page;
 import org.josiasguerrero.shared.domain.pagination.PageRequest;
 
 public interface ProductRepository {
-  void save(Product product);
+  Product save(Product product);
 
   Optional<Product> findById(ProductId id);
 
