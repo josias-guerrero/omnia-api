@@ -1,17 +1,17 @@
 package org.josiasguerrero.products.application.usecase.Product;
 
 import java.util.HashSet;
+import lombok.AllArgsConstructor;
 import org.josiasguerrero.products.application.dto.request.CreateProductRequest;
 import org.josiasguerrero.products.application.dto.response.ProductResponse;
 import org.josiasguerrero.products.application.mapper.ProductApplicationMapper;
 import org.josiasguerrero.products.domain.entity.Product;
 import org.josiasguerrero.products.domain.entity.ProductVariant;
-import org.josiasguerrero.products.domain.entity.Property;
 import org.josiasguerrero.products.domain.exception.DuplicateSkuException;
 import org.josiasguerrero.products.domain.port.BrandRepository;
 import org.josiasguerrero.products.domain.port.CategoryRepository;
 import org.josiasguerrero.products.domain.port.ProductRepository;
-import org.josiasguerrero.products.domain.port.PropertyRepository;
+import org.josiasguerrero.products.domain.port.PropertyDomainService;
 import org.josiasguerrero.products.domain.valueobject.Barcode;
 import org.josiasguerrero.products.domain.valueobject.BrandId;
 import org.josiasguerrero.products.domain.valueobject.CategoryId;
@@ -25,14 +25,12 @@ import org.josiasguerrero.products.domain.valueobject.VariantAttribute;
 import org.josiasguerrero.shared.aplication.validation.DtoValidator;
 import org.josiasguerrero.shared.domain.valueobject.Money;
 
-import lombok.AllArgsConstructor;
-
 @AllArgsConstructor
 public class CreateProductUseCase {
+  private final PropertyDomainService propertyDomainService;
   private final ProductRepository productRepository;
   private final BrandRepository brandRepository;
   private final CategoryRepository categoryRepository;
-  private final PropertyRepository propertyRepository;
   private final DtoValidator dtoValidator;
   private final ProductApplicationMapper productApplicationMapper;
 
@@ -63,7 +61,8 @@ public class CreateProductUseCase {
     if (request.categoryIds() != null && !request.categoryIds().isEmpty()) {
       for (Integer catId : request.categoryIds()) {
         CategoryId categoryId = CategoryId.from(catId);
-        categoryRepository.findById(categoryId)
+        categoryRepository
+            .findById(categoryId)
             .orElseThrow(() -> new IllegalArgumentException("Category not found: " + categoryId));
       }
     }
@@ -79,12 +78,16 @@ public class CreateProductUseCase {
 
     ProductVariantId variantId = ProductVariantId.generate();
     Sku sku = Sku.from(request.sku());
-    Barcode barcode = request.barcode() != null && !request.barcode().isBlank() ? new Barcode(request.barcode()) : null;
+    Barcode barcode =
+        request.barcode() != null && !request.barcode().isBlank()
+            ? new Barcode(request.barcode())
+            : null;
     Stock stock = request.stock() != null ? new Stock(request.stock()) : Stock.empty();
     Money cost = new Money(request.cost());
     Money price = new Money(request.price());
 
-    ProductVariant defaultVariant = new ProductVariant(variantId, sku, barcode, stock, cost, price, new HashSet<>());
+    ProductVariant defaultVariant =
+        new ProductVariant(variantId, sku, barcode, stock, cost, price, new HashSet<>());
     product.getVariants().add(defaultVariant);
 
     return product;
@@ -99,18 +102,13 @@ public class CreateProductUseCase {
     // Asignar propiedades a la primera variante
     if (request.properties() != null && !product.getVariants().isEmpty()) {
       ProductVariant defaultVariant = product.getVariants().iterator().next();
-      request.properties().forEach((propName, value) -> {
-        PropertyId propId = findOrCreateProperty(propName);
-        defaultVariant.addProperty(new VariantAttribute(propId, PropertyValue.of(value)));
-      });
+      request
+          .properties()
+          .forEach(
+              (propName, value) -> {
+                PropertyId propId = propertyDomainService.findOrCreateProperty(propName);
+                defaultVariant.addProperty(new VariantAttribute(propId, PropertyValue.of(value)));
+              });
     }
-  }
-
-  private PropertyId findOrCreateProperty(String name) {
-    return propertyRepository.findByName(name).map(Property::getId).orElseGet(() -> {
-      Property newProperty = new Property(name);
-      Property savedProperty = propertyRepository.save(newProperty);
-      return savedProperty.getId();
-    });
   }
 }

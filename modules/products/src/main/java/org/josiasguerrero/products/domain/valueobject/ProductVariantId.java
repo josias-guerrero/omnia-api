@@ -1,8 +1,6 @@
-
 package org.josiasguerrero.products.domain.valueobject;
 
 import java.util.UUID;
-
 import org.josiasguerrero.shared.domain.valueobject.EntityId;
 import org.josiasguerrero.shared.domain.valueobject.UuidHelper;
 

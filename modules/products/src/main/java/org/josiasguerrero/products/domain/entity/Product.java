@@ -93,6 +93,19 @@ public class Product {
     this.categoryIds.clear();
   }
 
+  public void addVariant(ProductVariant variant) {
+    if (variant == null) {
+      throw new IllegalArgumentException("Variant cannot be null");
+    }
+    boolean skuExists = this.variants.stream()
+        .anyMatch(v -> v.getSku().equals(variant.getSku()));
+    if (skuExists) {
+      throw new IllegalArgumentException("Variant with SKU " + variant.getSku().value() + " already exists in this product");
+    }
+    this.variants.add(variant);
+    this.updatedAt = LocalDateTime.now();
+  }
+
   public void rename(String name) {
     if (name == null || name.isBlank()) {
       throw new IllegalArgumentException("Name cannot be empty");

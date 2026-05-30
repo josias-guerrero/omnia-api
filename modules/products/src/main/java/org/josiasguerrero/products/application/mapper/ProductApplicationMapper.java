@@ -8,7 +8,9 @@ import java.util.stream.Collectors;
 import org.josiasguerrero.products.application.dto.response.BrandPResponse;
 import org.josiasguerrero.products.application.dto.response.CategoryPResponse;
 import org.josiasguerrero.products.application.dto.response.ProductResponse;
+import org.josiasguerrero.products.application.dto.response.ProductVariantResponse;
 import org.josiasguerrero.products.domain.entity.Product;
+import org.josiasguerrero.products.domain.entity.ProductVariant;
 import org.josiasguerrero.products.domain.port.BrandRepository;
 import org.josiasguerrero.products.domain.port.CategoryRepository;
 import org.josiasguerrero.products.domain.port.PropertyRepository;
@@ -36,39 +38,40 @@ public class ProductApplicationMapper {
         .flatMap(Optional::stream)
         .collect(Collectors.toSet());
 
-    // Obtener la primera variante como por defecto
-    var firstVariant = product.getVariants().stream().findFirst();
-
-    // Propiedades mapeadas de la primera variante
-    Map<String, String> properties = firstVariant
-        .map(v -> v.getProperties().stream()
-            .map(attr -> propertyRepository.findById(attr.propertyId())
-                .map(prop -> Map.entry(prop.getName(), attr.value().value())))
-            .flatMap(Optional::stream)
-            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (a, b) -> a)))
-        .orElse(Map.of());
-
-    // Barcode y otros campos seguros de la primera variante
-    String sku = firstVariant.map(v -> v.getSku().value()).orElse(null);
-    String barcode = firstVariant.flatMap(v -> Optional.ofNullable(v.getBarcode()).map(b -> b.value())).orElse(null);
-    java.math.BigDecimal cost = firstVariant.map(v -> v.getCost().amount()).orElse(java.math.BigDecimal.ZERO);
-    java.math.BigDecimal price = firstVariant.map(v -> v.getPrice().amount()).orElse(java.math.BigDecimal.ZERO);
-    Integer stock = firstVariant.map(v -> v.getStock().quantity()).orElse(0);
+    // Mapear todas las variantes
+    Set<ProductVariantResponse> variants = product.getVariants().stream()
+        .map(this::toVariantResponse)
+        .collect(Collectors.toSet());
 
     // Construcción del DTO final
     return new ProductResponse(
         product.getId().value().toString(),
-        sku,
         product.getName(),
         product.getDescription(),
-        barcode,
-        cost,
-        price,
-        stock,
         brandDto,
         categories,
-        properties,
+        variants,
         product.getCreatedAt(),
         product.getUpdatedAt());
+  }
+
+  private ProductVariantResponse toVariantResponse(ProductVariant variant) {
+    Map<String, String> properties = variant.getProperties().stream()
+        .map(attr -> propertyRepository.findById(attr.propertyId())
+            .map(prop -> Map.entry(prop.getName(), attr.value().value())))
+        .flatMap(Optional::stream)
+        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (a, b) -> a));
+
+    return new ProductVariantResponse(
+        variant.getId().value().toString(),
+        variant.getSku().value(),
+        variant.getBarcode() != null ? variant.getBarcode().value() : null,
+        variant.getStock().quantity(),
+        variant.getCost().amount(),
+        variant.getPrice().amount(),
+        properties,
+        variant.getCreatedAt(),
+        variant.getUpdatedAt()
+    );
   }
 }

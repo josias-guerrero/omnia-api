@@ -13,8 +13,11 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
+import java.util.UUID;
+
 import org.josiasguerrero.products.application.dto.request.CreateProductRequest;
 import org.josiasguerrero.products.application.dto.response.ProductResponse;
+import org.josiasguerrero.products.application.dto.response.ProductVariantResponse;
 import org.josiasguerrero.products.application.mapper.ProductApplicationMapper;
 import org.josiasguerrero.products.application.usecase.Product.CreateProductUseCase;
 import org.josiasguerrero.products.domain.entity.Brand;
@@ -79,18 +82,24 @@ class CreateProductUseCaseTest {
 
   private ProductResponse buildProductResponse(ProductId productId) {
     var now = LocalDateTime.now();
-    return new ProductResponse(
-        productId.toString(),
+    var variantResponse = new ProductVariantResponse(
+        UUID.randomUUID().toString(),
         PRODUCT_SKU,
-        PRODUCT_NAME,
-        PRODUCT_DESCRIPTION,
         PRODUCT_BARCODE,
+        PRODUCT_STOCK,
         PRODUCT_COST,
         PRODUCT_PRICE,
-        PRODUCT_STOCK,
-        null,
-        null,
         new HashMap<>(),
+        now,
+        now
+    );
+    return new ProductResponse(
+        productId.toString(),
+        PRODUCT_NAME,
+        PRODUCT_DESCRIPTION,
+        null,
+        Set.of(),
+        Set.of(variantResponse),
         now,
         now);
   }
@@ -138,7 +147,7 @@ class CreateProductUseCaseTest {
 
     assertNotNull(result);
     assertEquals(PRODUCT_NAME, result.name());
-    assertEquals(PRODUCT_SKU, result.sku());
+    assertEquals(PRODUCT_SKU, result.variants().iterator().next().sku());
     assertEquals(PRODUCT_DESCRIPTION, result.description());
     Mockito.verify(dtoValidator).validate(Mockito.any(CreateProductRequest.class));
     Mockito.verify(productRepository).existsBySku(Mockito.any(Sku.class));
@@ -400,7 +409,7 @@ class CreateProductUseCaseTest {
 
     assertNotNull(result);
     assertEquals(PRODUCT_NAME, result.name());
-    assertTrue(result.properties().isEmpty());
+    assertTrue(result.variants().iterator().next().properties().isEmpty());
     Mockito.verify(dtoValidator).validate(Mockito.any(CreateProductRequest.class));
     Mockito.verify(productRepository).existsBySku(Mockito.any(Sku.class));
     Mockito.verify(productRepository).save(productCaptor.capture());
