@@ -16,28 +16,6 @@ CREATE TABLE public.categories (
     CONSTRAINT categories_pkey PRIMARY KEY (id)
 );
 
-CREATE TABLE public.product_category (
-    product_id uuid NOT NULL,
-    category_id integer NOT NULL,
-    CONSTRAINT product_category_pkey PRIMARY KEY (product_id, category_id)
-);
-
-CREATE TABLE public.variant_property (
-    id bigint NOT NULL GENERATED ALWAYS AS IDENTITY,
-
-    variant_id uuid NOT NULL,
-    property_id integer NOT NULL,
-
-    value varchar(100) NOT NULL,
-    CONSTRAINT fk_variant_property_variant
-        FOREIGN KEY (variant_id)
-        REFERENCES product_variants(id),
-
-    CONSTRAINT fk_variant_property_property
-        FOREIGN KEY (property_id)
-        REFERENCES properties(id)
-);
-
 CREATE TABLE public.products (
     id uuid NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
@@ -45,33 +23,19 @@ CREATE TABLE public.products (
     name varchar(100) NOT NULL,
     description varchar(255),
     brand_id integer,
-    CONSTRAINT products_pkey PRIMARY KEY (id)
+    CONSTRAINT products_pkey PRIMARY KEY (id),
+    CONSTRAINT fk_brand FOREIGN KEY (brand_id)
+        REFERENCES public.brands (id)
 );
 
-CREATE TABLE public.product_variants (
-    id uuid PRIMARY KEY,
+CREATE TABLE public.product_category (
     product_id uuid NOT NULL,
-
-    sku varchar(70) NOT NULL,
-    barcode varchar(50),
-
-    stock integer NOT NULL DEFAULT 0,
-
-    cost numeric(10,2) NOT NULL,
-    price numeric(10,2) NOT NULL,
-
-    created_at timestamp NOT NULL,
-    updated_at timestamp NOT NULL,
-
-    CONSTRAINT fk_variant_product
-        FOREIGN KEY (product_id)
-        REFERENCES products(id),
-
-    CONSTRAINT uk_variant_sku
-        UNIQUE (sku),
-
-    CONSTRAINT uk_variant_barcode
-        UNIQUE (barcode)
+    category_id integer NOT NULL,
+    CONSTRAINT product_category_pkey PRIMARY KEY (product_id, category_id),
+    CONSTRAINT fk_product FOREIGN KEY (product_id)
+        REFERENCES public.products (id),
+    CONSTRAINT fk_category FOREIGN KEY (category_id)
+        REFERENCES public.categories (id)
 );
 
 CREATE TABLE public.properties (
@@ -82,16 +46,29 @@ CREATE TABLE public.properties (
     CONSTRAINT properties_pkey PRIMARY KEY (id)
 );
 
-ALTER TABLE public.product_category
-    ADD CONSTRAINT fk_product FOREIGN KEY (product_id)
-    REFERENCES public.products (id);
+CREATE TABLE public.product_variants (
+    id uuid PRIMARY KEY,
+    product_id uuid NOT NULL,
+    sku varchar(70) NOT NULL,
+    barcode varchar(50),
+    stock integer NOT NULL DEFAULT 0,
+    cost numeric(10,2) NOT NULL,
+    price numeric(10,2) NOT NULL,
+    created_at timestamp NOT NULL,
+    updated_at timestamp NOT NULL,
+    CONSTRAINT fk_variant_product FOREIGN KEY (product_id)
+        REFERENCES public.products (id),
+    CONSTRAINT uk_variant_sku UNIQUE (sku),
+    CONSTRAINT uk_variant_barcode UNIQUE (barcode)
+);
 
-ALTER TABLE public.product_category
-    ADD CONSTRAINT fk_category FOREIGN KEY (category_id)
-    REFERENCES public.categories (id);
-
-
-
-ALTER TABLE public.products
-    ADD CONSTRAINT fk_brand FOREIGN KEY (brand_id)
-    REFERENCES public.brands (id);
+CREATE TABLE public.variant_property (
+    id bigint NOT NULL GENERATED ALWAYS AS IDENTITY,
+    variant_id uuid NOT NULL,
+    property_id integer NOT NULL,
+    value varchar(100) NOT NULL,
+    CONSTRAINT fk_variant_property_variant FOREIGN KEY (variant_id)
+        REFERENCES public.product_variants(id),
+    CONSTRAINT fk_variant_property_property FOREIGN KEY (property_id)
+        REFERENCES public.properties(id)
+);
