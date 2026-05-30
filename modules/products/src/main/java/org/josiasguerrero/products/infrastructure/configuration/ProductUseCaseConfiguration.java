@@ -14,6 +14,7 @@ import org.josiasguerrero.products.domain.port.CategoryRepository;
 import org.josiasguerrero.products.domain.port.ProductRepository;
 import org.josiasguerrero.products.domain.port.PropertyDomainService;
 import org.josiasguerrero.products.domain.port.PropertyRepository;
+import org.josiasguerrero.products.domain.port.SkuGeneratorPort;
 import org.josiasguerrero.shared.aplication.validation.DtoValidator;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,6 +24,7 @@ public class ProductUseCaseConfiguration {
 
   @Bean
   public CreateProductUseCase createProductUseCase(
+      SkuGeneratorPort skuGenerator,
       PropertyDomainService propertyDomainService,
       ProductRepository productRepository,
       BrandRepository brandRepository,
@@ -36,7 +38,8 @@ public class ProductUseCaseConfiguration {
         brandRepository,
         categoryRepository,
         dtoValidator,
-        productApplicationMapper);
+        productApplicationMapper,
+        skuGenerator);
   }
 
   @Bean
@@ -90,12 +93,19 @@ public class ProductUseCaseConfiguration {
 
   @Bean
   public CreateProductVariantUseCase createProductVariantUseCase(
+      BrandRepository brandRepository,
+      SkuGeneratorPort skuGenerator,
       ProductRepository productRepository,
       PropertyDomainService propertyDomainService,
       DtoValidator dtoValidator,
       ProductApplicationMapper productApplicationMapper) {
     return new CreateProductVariantUseCase(
-        propertyDomainService, productRepository, dtoValidator, productApplicationMapper);
+        propertyDomainService,
+        productRepository,
+        dtoValidator,
+        productApplicationMapper,
+        skuGenerator,
+        brandRepository);
   }
 
   @Bean

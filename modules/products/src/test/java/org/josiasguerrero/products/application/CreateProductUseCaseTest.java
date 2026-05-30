@@ -12,9 +12,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-
 import java.util.UUID;
-
 import org.josiasguerrero.products.application.dto.request.CreateProductRequest;
 import org.josiasguerrero.products.application.dto.response.ProductResponse;
 import org.josiasguerrero.products.application.dto.response.ProductVariantResponse;
@@ -24,12 +22,13 @@ import org.josiasguerrero.products.domain.entity.Brand;
 import org.josiasguerrero.products.domain.entity.Category;
 import org.josiasguerrero.products.domain.entity.Product;
 import org.josiasguerrero.products.domain.entity.ProductVariant;
-import org.josiasguerrero.products.domain.entity.Property;
 import org.josiasguerrero.products.domain.exception.DuplicateSkuException;
 import org.josiasguerrero.products.domain.port.BrandRepository;
 import org.josiasguerrero.products.domain.port.CategoryRepository;
 import org.josiasguerrero.products.domain.port.ProductRepository;
+import org.josiasguerrero.products.domain.port.PropertyDomainService;
 import org.josiasguerrero.products.domain.port.PropertyRepository;
+import org.josiasguerrero.products.domain.port.SkuGeneratorPort;
 import org.josiasguerrero.products.domain.valueobject.Barcode;
 import org.josiasguerrero.products.domain.valueobject.BrandId;
 import org.josiasguerrero.products.domain.valueobject.CategoryId;
@@ -61,38 +60,32 @@ class CreateProductUseCaseTest {
   private static final BigDecimal PRODUCT_PRICE = new BigDecimal("1.2");
   private static final int PRODUCT_STOCK = 25;
 
-  @Mock
-  private ProductRepository productRepository;
-  @Mock
-  private BrandRepository brandRepository;
-  @Mock
-  private CategoryRepository categoryRepository;
-  @Mock
-  private PropertyRepository propertyRepository;
-  @Mock
-  private DtoValidator dtoValidator;
-  @Mock
-  private ProductApplicationMapper productApplicationMapper;
+  @Mock private ProductRepository productRepository;
+  @Mock private BrandRepository brandRepository;
+  @Mock private CategoryRepository categoryRepository;
+  @Mock private PropertyRepository propertyRepository;
+  @Mock private DtoValidator dtoValidator;
+  @Mock private ProductApplicationMapper productApplicationMapper;
+  @Mock private PropertyDomainService propertyDomainService;
+  @Mock private SkuGeneratorPort skuGenerator;
 
-  @InjectMocks
-  private CreateProductUseCase createProductUseCase;
+  @InjectMocks private CreateProductUseCase createProductUseCase;
 
-  @Captor
-  private ArgumentCaptor<Product> productCaptor;
+  @Captor private ArgumentCaptor<Product> productCaptor;
 
   private ProductResponse buildProductResponse(ProductId productId) {
     var now = LocalDateTime.now();
-    var variantResponse = new ProductVariantResponse(
-        UUID.randomUUID().toString(),
-        PRODUCT_SKU,
-        PRODUCT_BARCODE,
-        PRODUCT_STOCK,
-        PRODUCT_COST,
-        PRODUCT_PRICE,
-        new HashMap<>(),
-        now,
-        now
-    );
+    var variantResponse =
+        new ProductVariantResponse(
+            UUID.randomUUID().toString(),
+            PRODUCT_SKU,
+            PRODUCT_BARCODE,
+            PRODUCT_STOCK,
+            PRODUCT_COST,
+            PRODUCT_PRICE,
+            new HashMap<>(),
+            now,
+            now);
     return new ProductResponse(
         productId.toString(),
         PRODUCT_NAME,
@@ -118,11 +111,16 @@ class CreateProductUseCaseTest {
         data.getProperties());
   }
 
-  private void assertProductVariant(Product savedProduct, Sku expectedSku,
-      Barcode expectedBarcode, Stock expectedStock,
-      Money expectedCost, Money expectedPrice, int propertyCount) {
-    assertEquals(1, savedProduct.getVariants().size(),
-        "Product should have exactly one default variant");
+  private void assertProductVariant(
+      Product savedProduct,
+      Sku expectedSku,
+      Barcode expectedBarcode,
+      Stock expectedStock,
+      Money expectedCost,
+      Money expectedPrice,
+      int propertyCount) {
+    assertEquals(
+        1, savedProduct.getVariants().size(), "Product should have exactly one default variant");
     ProductVariant variant = savedProduct.getVariants().iterator().next();
     assertEquals(expectedSku, variant.getSku());
     assertEquals(expectedBarcode, variant.getBarcode());
@@ -157,11 +155,21 @@ class CreateProductUseCaseTest {
     Product savedProduct = productCaptor.getValue();
     assertEquals(PRODUCT_NAME, savedProduct.getName());
     assertEquals(PRODUCT_DESCRIPTION, savedProduct.getDescription());
-    assertProductVariant(savedProduct, Sku.from(PRODUCT_SKU),
-        new Barcode(PRODUCT_BARCODE), Stock.of(PRODUCT_STOCK),
-        new Money(PRODUCT_COST), new Money(PRODUCT_PRICE), 0);
-    Mockito.verifyNoMoreInteractions(productRepository, brandRepository, categoryRepository,
-        propertyRepository, productApplicationMapper, dtoValidator);
+    assertProductVariant(
+        savedProduct,
+        Sku.from(PRODUCT_SKU),
+        new Barcode(PRODUCT_BARCODE),
+        Stock.of(PRODUCT_STOCK),
+        new Money(PRODUCT_COST),
+        new Money(PRODUCT_PRICE),
+        0);
+    Mockito.verifyNoMoreInteractions(
+        productRepository,
+        brandRepository,
+        categoryRepository,
+        propertyRepository,
+        productApplicationMapper,
+        dtoValidator);
   }
 
   @Test
@@ -187,19 +195,29 @@ class CreateProductUseCaseTest {
 
     Product savedProduct = productCaptor.getValue();
     assertNull(savedProduct.getBrandId());
-    assertProductVariant(savedProduct, Sku.from(PRODUCT_SKU),
-        new Barcode(PRODUCT_BARCODE), Stock.of(PRODUCT_STOCK),
-        new Money(PRODUCT_COST), new Money(PRODUCT_PRICE), 0);
-    Mockito.verifyNoMoreInteractions(productRepository, brandRepository, categoryRepository,
-        propertyRepository, productApplicationMapper, dtoValidator);
+    assertProductVariant(
+        savedProduct,
+        Sku.from(PRODUCT_SKU),
+        new Barcode(PRODUCT_BARCODE),
+        Stock.of(PRODUCT_STOCK),
+        new Money(PRODUCT_COST),
+        new Money(PRODUCT_PRICE),
+        0);
+    Mockito.verifyNoMoreInteractions(
+        productRepository,
+        brandRepository,
+        categoryRepository,
+        propertyRepository,
+        productApplicationMapper,
+        dtoValidator);
   }
 
   @Test
   @DisplayName("Should create product with multiple categories")
   void should_create_product_with_multiple_categories() {
     Set<Integer> categoryIds = Set.of(1, 2, 3);
-    var request = buildNewProductRequest(
-        ProductOptionalData.builder().categories(categoryIds).build());
+    var request =
+        buildNewProductRequest(ProductOptionalData.builder().categories(categoryIds).build());
     var productId = ProductId.generate();
     var productEntity = new Product(productId, PRODUCT_NAME, PRODUCT_DESCRIPTION);
     var productResponse = buildProductResponse(productId);
@@ -215,18 +233,27 @@ class CreateProductUseCaseTest {
     assertEquals(PRODUCT_NAME, result.name());
     Mockito.verify(dtoValidator).validate(Mockito.any(CreateProductRequest.class));
     Mockito.verify(productRepository).existsBySku(Mockito.any(Sku.class));
-    Mockito.verify(categoryRepository, Mockito.times(3))
-        .findById(Mockito.any(CategoryId.class));
+    Mockito.verify(categoryRepository, Mockito.times(3)).findById(Mockito.any(CategoryId.class));
     Mockito.verify(productRepository).save(productCaptor.capture());
     Mockito.verify(productApplicationMapper).toResponse(productEntity);
 
     Product savedProduct = productCaptor.getValue();
     assertEquals(3, savedProduct.getCategoryIds().size());
-    assertProductVariant(savedProduct, Sku.from(PRODUCT_SKU),
-        new Barcode(PRODUCT_BARCODE), Stock.of(PRODUCT_STOCK),
-        new Money(PRODUCT_COST), new Money(PRODUCT_PRICE), 0);
-    Mockito.verifyNoMoreInteractions(productRepository, brandRepository, categoryRepository,
-        propertyRepository, productApplicationMapper, dtoValidator);
+    assertProductVariant(
+        savedProduct,
+        Sku.from(PRODUCT_SKU),
+        new Barcode(PRODUCT_BARCODE),
+        Stock.of(PRODUCT_STOCK),
+        new Money(PRODUCT_COST),
+        new Money(PRODUCT_PRICE),
+        0);
+    Mockito.verifyNoMoreInteractions(
+        productRepository,
+        brandRepository,
+        categoryRepository,
+        propertyRepository,
+        productApplicationMapper,
+        dtoValidator);
   }
 
   @Test
@@ -235,12 +262,13 @@ class CreateProductUseCaseTest {
     Integer brandId = 1;
     Set<Integer> categoryIds = Set.of(1, 2);
     Map<String, String> properties = Map.of("color", "rojo", "talla", "M");
-    var request = buildNewProductRequest(
-        ProductOptionalData.builder()
-            .brandId(brandId)
-            .categories(categoryIds)
-            .properties(properties)
-            .build());
+    var request =
+        buildNewProductRequest(
+            ProductOptionalData.builder()
+                .brandId(brandId)
+                .categories(categoryIds)
+                .properties(properties)
+                .build());
     var productId = ProductId.generate();
     var productEntity = new Product(productId, PRODUCT_NAME, PRODUCT_DESCRIPTION);
     var productResponse = buildProductResponse(productId);
@@ -249,10 +277,10 @@ class CreateProductUseCaseTest {
         .thenReturn(Optional.of(new Brand(new BrandId(brandId), "Test Brand")));
     Mockito.when(categoryRepository.findById(Mockito.any(CategoryId.class)))
         .thenReturn(Optional.of(Mockito.mock(Category.class)));
-    Mockito.when(propertyRepository.findByName("color"))
-        .thenReturn(Optional.of(new Property(PropertyId.from(1), "color")));
-    Mockito.when(propertyRepository.findByName("talla"))
-        .thenReturn(Optional.of(new Property(PropertyId.from(2), "talla")));
+    Mockito.when(propertyDomainService.findOrCreateProperty("color"))
+        .thenReturn(PropertyId.from(1));
+    Mockito.when(propertyDomainService.findOrCreateProperty("talla"))
+        .thenReturn(PropertyId.from(2));
     Mockito.when(productRepository.save(Mockito.any(Product.class))).thenReturn(productEntity);
     Mockito.when(productApplicationMapper.toResponse(productEntity)).thenReturn(productResponse);
 
@@ -262,36 +290,44 @@ class CreateProductUseCaseTest {
     assertEquals(PRODUCT_NAME, result.name());
     Mockito.verify(dtoValidator).validate(Mockito.any(CreateProductRequest.class));
     Mockito.verify(productRepository).existsBySku(Mockito.any(Sku.class));
-    Mockito.verify(brandRepository).findById(Mockito.any(BrandId.class));
-    Mockito.verify(categoryRepository, Mockito.times(2))
-        .findById(Mockito.any(CategoryId.class));
-    Mockito.verify(propertyRepository).findByName("color");
-    Mockito.verify(propertyRepository).findByName("talla");
+    Mockito.verify(brandRepository, Mockito.times(2)).findById(Mockito.any(BrandId.class));
+    Mockito.verify(categoryRepository, Mockito.times(2)).findById(Mockito.any(CategoryId.class));
+    Mockito.verify(propertyDomainService).findOrCreateProperty("color");
+    Mockito.verify(propertyDomainService).findOrCreateProperty("talla");
     Mockito.verify(productRepository).save(productCaptor.capture());
     Mockito.verify(productApplicationMapper).toResponse(productEntity);
 
     Product savedProduct = productCaptor.getValue();
     assertEquals(brandId, savedProduct.getBrandId().value());
     assertEquals(2, savedProduct.getCategoryIds().size());
-    assertProductVariant(savedProduct, Sku.from(PRODUCT_SKU),
-        new Barcode(PRODUCT_BARCODE), Stock.of(PRODUCT_STOCK),
-        new Money(PRODUCT_COST), new Money(PRODUCT_PRICE), 2);
-    Mockito.verifyNoMoreInteractions(productRepository, brandRepository, categoryRepository,
-        propertyRepository, productApplicationMapper, dtoValidator);
+    assertProductVariant(
+        savedProduct,
+        Sku.from(PRODUCT_SKU),
+        new Barcode(PRODUCT_BARCODE),
+        Stock.of(PRODUCT_STOCK),
+        new Money(PRODUCT_COST),
+        new Money(PRODUCT_PRICE),
+        2);
+    Mockito.verifyNoMoreInteractions(
+        productRepository,
+        brandRepository,
+        categoryRepository,
+        propertyRepository,
+        productApplicationMapper,
+        dtoValidator);
   }
 
   @Test
   @DisplayName("Should assign existing property to product variant")
   void should_assign_existing_property() {
     PropertyId existingId = PropertyId.from(21);
-    Property existingProperty = new Property(existingId, "color");
-    var request = buildNewProductRequest(
-        ProductOptionalData.builder().properties(Map.of("color", "rojo")).build());
+    var request =
+        buildNewProductRequest(
+            ProductOptionalData.builder().properties(Map.of("color", "rojo")).build());
     var productId = ProductId.generate();
     var productResponse = buildProductResponse(productId);
 
-    Mockito.when(propertyRepository.findByName("color"))
-        .thenReturn(Optional.of(existingProperty));
+    Mockito.when(propertyDomainService.findOrCreateProperty("color")).thenReturn(existingId);
     Mockito.when(productRepository.save(Mockito.any(Product.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
     Mockito.when(productApplicationMapper.toResponse(Mockito.any(Product.class)))
@@ -302,35 +338,39 @@ class CreateProductUseCaseTest {
     assertNotNull(result);
     Mockito.verify(dtoValidator).validate(Mockito.any(CreateProductRequest.class));
     Mockito.verify(productRepository).existsBySku(Mockito.any(Sku.class));
-    Mockito.verify(propertyRepository).findByName("color");
-    Mockito.verify(propertyRepository, Mockito.never()).save(Mockito.any(Property.class));
+    Mockito.verify(propertyDomainService).findOrCreateProperty("color");
     Mockito.verify(productRepository).save(productCaptor.capture());
     Mockito.verify(productApplicationMapper).toResponse(Mockito.any(Product.class));
 
     Product savedProduct = productCaptor.getValue();
-    assertProductVariant(savedProduct, Sku.from(PRODUCT_SKU),
-        new Barcode(PRODUCT_BARCODE), Stock.of(PRODUCT_STOCK),
-        new Money(PRODUCT_COST), new Money(PRODUCT_PRICE), 1);
-    Mockito.verifyNoMoreInteractions(productRepository, brandRepository, categoryRepository,
-        propertyRepository, productApplicationMapper, dtoValidator);
+    assertProductVariant(
+        savedProduct,
+        Sku.from(PRODUCT_SKU),
+        new Barcode(PRODUCT_BARCODE),
+        Stock.of(PRODUCT_STOCK),
+        new Money(PRODUCT_COST),
+        new Money(PRODUCT_PRICE),
+        1);
+    Mockito.verifyNoMoreInteractions(
+        productRepository,
+        brandRepository,
+        categoryRepository,
+        propertyRepository,
+        productApplicationMapper,
+        dtoValidator);
   }
 
   @Test
   @DisplayName("Should create property when not found and assign to variant")
   void should_create_property_when_not_exists() {
     PropertyId newId = PropertyId.from(21);
-    Property newProperty = new Property(newId, "color");
-    var request = buildNewProductRequest(
-        ProductOptionalData.builder().properties(Map.of("color", "rojo")).build());
+    var request =
+        buildNewProductRequest(
+            ProductOptionalData.builder().properties(Map.of("color", "rojo")).build());
     var productId = ProductId.generate();
     var productResponse = buildProductResponse(productId);
 
-    Mockito.when(propertyRepository.findByName("color"))
-        .thenReturn(Optional.empty());
-    Mockito.when(propertyRepository.save(Mockito.any(Property.class)))
-        .thenReturn(newProperty);
-    Mockito.when(productRepository.existsBySku(Mockito.any(Sku.class)))
-        .thenReturn(false);
+    Mockito.when(propertyDomainService.findOrCreateProperty("color")).thenReturn(newId);
     Mockito.when(productRepository.save(Mockito.any(Product.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
     Mockito.when(productApplicationMapper.toResponse(Mockito.any(Product.class)))
@@ -341,34 +381,42 @@ class CreateProductUseCaseTest {
     assertNotNull(result);
     Mockito.verify(dtoValidator).validate(Mockito.any(CreateProductRequest.class));
     Mockito.verify(productRepository).existsBySku(Mockito.any(Sku.class));
-    Mockito.verify(propertyRepository).findByName("color");
-    Mockito.verify(propertyRepository).save(Mockito.any(Property.class));
+    Mockito.verify(propertyDomainService).findOrCreateProperty("color");
     Mockito.verify(productRepository).save(productCaptor.capture());
     Mockito.verify(productApplicationMapper).toResponse(Mockito.any(Product.class));
 
     Product savedProduct = productCaptor.getValue();
-    assertProductVariant(savedProduct, Sku.from(PRODUCT_SKU),
-        new Barcode(PRODUCT_BARCODE), Stock.of(PRODUCT_STOCK),
-        new Money(PRODUCT_COST), new Money(PRODUCT_PRICE), 1);
-    Mockito.verifyNoMoreInteractions(productRepository, brandRepository, categoryRepository,
-        propertyRepository, productApplicationMapper, dtoValidator);
+    assertProductVariant(
+        savedProduct,
+        Sku.from(PRODUCT_SKU),
+        new Barcode(PRODUCT_BARCODE),
+        Stock.of(PRODUCT_STOCK),
+        new Money(PRODUCT_COST),
+        new Money(PRODUCT_PRICE),
+        1);
+    Mockito.verifyNoMoreInteractions(
+        productRepository,
+        brandRepository,
+        categoryRepository,
+        propertyRepository,
+        productApplicationMapper,
+        dtoValidator);
   }
 
   @Test
   @DisplayName("Should create product with multiple properties assigned to variant")
   void should_create_product_with_multiple_properties() {
     Map<String, String> properties = Map.of("color", "rojo", "size", "M", "weight", "150g");
-    var request = buildNewProductRequest(
-        ProductOptionalData.builder().properties(properties).build());
+    var request =
+        buildNewProductRequest(ProductOptionalData.builder().properties(properties).build());
     var productId = ProductId.generate();
     var productResponse = buildProductResponse(productId);
 
-    Mockito.when(propertyRepository.findByName("color"))
-        .thenReturn(Optional.of(new Property(PropertyId.from(1), "color")));
-    Mockito.when(propertyRepository.findByName("size"))
-        .thenReturn(Optional.of(new Property(PropertyId.from(2), "size")));
-    Mockito.when(propertyRepository.findByName("weight"))
-        .thenReturn(Optional.of(new Property(PropertyId.from(3), "weight")));
+    Mockito.when(propertyDomainService.findOrCreateProperty("color"))
+        .thenReturn(PropertyId.from(1));
+    Mockito.when(propertyDomainService.findOrCreateProperty("size")).thenReturn(PropertyId.from(2));
+    Mockito.when(propertyDomainService.findOrCreateProperty("weight"))
+        .thenReturn(PropertyId.from(3));
     Mockito.when(productRepository.save(Mockito.any(Product.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
     Mockito.when(productApplicationMapper.toResponse(Mockito.any(Product.class)))
@@ -379,25 +427,36 @@ class CreateProductUseCaseTest {
     assertNotNull(result);
     Mockito.verify(dtoValidator).validate(Mockito.any(CreateProductRequest.class));
     Mockito.verify(productRepository).existsBySku(Mockito.any(Sku.class));
-    Mockito.verify(propertyRepository).findByName("color");
-    Mockito.verify(propertyRepository).findByName("size");
-    Mockito.verify(propertyRepository).findByName("weight");
+    Mockito.verify(propertyDomainService).findOrCreateProperty("color");
+    Mockito.verify(propertyDomainService).findOrCreateProperty("size");
+    Mockito.verify(propertyDomainService).findOrCreateProperty("weight");
     Mockito.verify(productRepository).save(productCaptor.capture());
     Mockito.verify(productApplicationMapper).toResponse(Mockito.any(Product.class));
 
     Product savedProduct = productCaptor.getValue();
-    assertProductVariant(savedProduct, Sku.from(PRODUCT_SKU),
-        new Barcode(PRODUCT_BARCODE), Stock.of(PRODUCT_STOCK),
-        new Money(PRODUCT_COST), new Money(PRODUCT_PRICE), 3);
-    Mockito.verifyNoMoreInteractions(productRepository, brandRepository, categoryRepository,
-        propertyRepository, productApplicationMapper, dtoValidator);
+    assertProductVariant(
+        savedProduct,
+        Sku.from(PRODUCT_SKU),
+        new Barcode(PRODUCT_BARCODE),
+        Stock.of(PRODUCT_STOCK),
+        new Money(PRODUCT_COST),
+        new Money(PRODUCT_PRICE),
+        3);
+    Mockito.verifyNoMoreInteractions(
+        productRepository,
+        brandRepository,
+        categoryRepository,
+        propertyRepository,
+        productApplicationMapper,
+        dtoValidator);
   }
 
   @Test
   @DisplayName("Should create product with empty properties and categories")
   void should_create_product_with_empty_properties_and_categories() {
-    var request = buildNewProductRequest(
-        ProductOptionalData.builder().properties(Map.of()).categories(Set.of()).build());
+    var request =
+        buildNewProductRequest(
+            ProductOptionalData.builder().properties(Map.of()).categories(Set.of()).build());
     var productId = ProductId.generate();
     var productEntity = new Product(productId, PRODUCT_NAME, PRODUCT_DESCRIPTION);
     var productResponse = buildProductResponse(productId);
@@ -416,19 +475,38 @@ class CreateProductUseCaseTest {
     Mockito.verify(productApplicationMapper).toResponse(productEntity);
 
     Product savedProduct = productCaptor.getValue();
-    assertProductVariant(savedProduct, Sku.from(PRODUCT_SKU),
-        new Barcode(PRODUCT_BARCODE), Stock.of(PRODUCT_STOCK),
-        new Money(PRODUCT_COST), new Money(PRODUCT_PRICE), 0);
-    Mockito.verifyNoMoreInteractions(productRepository, brandRepository, categoryRepository,
-        propertyRepository, productApplicationMapper, dtoValidator);
+    assertProductVariant(
+        savedProduct,
+        Sku.from(PRODUCT_SKU),
+        new Barcode(PRODUCT_BARCODE),
+        Stock.of(PRODUCT_STOCK),
+        new Money(PRODUCT_COST),
+        new Money(PRODUCT_PRICE),
+        0);
+    Mockito.verifyNoMoreInteractions(
+        productRepository,
+        brandRepository,
+        categoryRepository,
+        propertyRepository,
+        productApplicationMapper,
+        dtoValidator);
   }
 
   @Test
   @DisplayName("Should create product with null barcode")
   void should_create_product_with_null_barcode() {
-    var request = new CreateProductRequest(
-        PRODUCT_SKU, PRODUCT_NAME, PRODUCT_COST, PRODUCT_PRICE, PRODUCT_STOCK,
-        PRODUCT_DESCRIPTION, null, null, null, null);
+    var request =
+        new CreateProductRequest(
+            PRODUCT_SKU,
+            PRODUCT_NAME,
+            PRODUCT_COST,
+            PRODUCT_PRICE,
+            PRODUCT_STOCK,
+            PRODUCT_DESCRIPTION,
+            null,
+            null,
+            null,
+            null);
     var productId = ProductId.generate();
     var productEntity = new Product(productId, PRODUCT_NAME, PRODUCT_DESCRIPTION);
     var productResponse = buildProductResponse(productId);
@@ -445,19 +523,38 @@ class CreateProductUseCaseTest {
     Mockito.verify(productApplicationMapper).toResponse(productEntity);
 
     Product savedProduct = productCaptor.getValue();
-    assertProductVariant(savedProduct, Sku.from(PRODUCT_SKU),
-        null, Stock.of(PRODUCT_STOCK),
-        new Money(PRODUCT_COST), new Money(PRODUCT_PRICE), 0);
-    Mockito.verifyNoMoreInteractions(productRepository, brandRepository, categoryRepository,
-        propertyRepository, productApplicationMapper, dtoValidator);
+    assertProductVariant(
+        savedProduct,
+        Sku.from(PRODUCT_SKU),
+        null,
+        Stock.of(PRODUCT_STOCK),
+        new Money(PRODUCT_COST),
+        new Money(PRODUCT_PRICE),
+        0);
+    Mockito.verifyNoMoreInteractions(
+        productRepository,
+        brandRepository,
+        categoryRepository,
+        propertyRepository,
+        productApplicationMapper,
+        dtoValidator);
   }
 
   @Test
   @DisplayName("Should create product with blank barcode treated as null")
   void should_create_product_with_blank_barcode() {
-    var request = new CreateProductRequest(
-        PRODUCT_SKU, PRODUCT_NAME, PRODUCT_COST, PRODUCT_PRICE, PRODUCT_STOCK,
-        PRODUCT_DESCRIPTION, "", null, null, null);
+    var request =
+        new CreateProductRequest(
+            PRODUCT_SKU,
+            PRODUCT_NAME,
+            PRODUCT_COST,
+            PRODUCT_PRICE,
+            PRODUCT_STOCK,
+            PRODUCT_DESCRIPTION,
+            "",
+            null,
+            null,
+            null);
     var productId = ProductId.generate();
     var productEntity = new Product(productId, PRODUCT_NAME, PRODUCT_DESCRIPTION);
     var productResponse = buildProductResponse(productId);
@@ -474,19 +571,38 @@ class CreateProductUseCaseTest {
     Mockito.verify(productApplicationMapper).toResponse(productEntity);
 
     Product savedProduct = productCaptor.getValue();
-    assertProductVariant(savedProduct, Sku.from(PRODUCT_SKU),
-        null, Stock.of(PRODUCT_STOCK),
-        new Money(PRODUCT_COST), new Money(PRODUCT_PRICE), 0);
-    Mockito.verifyNoMoreInteractions(productRepository, brandRepository, categoryRepository,
-        propertyRepository, productApplicationMapper, dtoValidator);
+    assertProductVariant(
+        savedProduct,
+        Sku.from(PRODUCT_SKU),
+        null,
+        Stock.of(PRODUCT_STOCK),
+        new Money(PRODUCT_COST),
+        new Money(PRODUCT_PRICE),
+        0);
+    Mockito.verifyNoMoreInteractions(
+        productRepository,
+        brandRepository,
+        categoryRepository,
+        propertyRepository,
+        productApplicationMapper,
+        dtoValidator);
   }
 
   @Test
   @DisplayName("Should create product with null stock using Stock.empty()")
   void should_create_product_with_null_stock() {
-    var request = new CreateProductRequest(
-        PRODUCT_SKU, PRODUCT_NAME, PRODUCT_COST, PRODUCT_PRICE, null,
-        PRODUCT_DESCRIPTION, PRODUCT_BARCODE, null, null, null);
+    var request =
+        new CreateProductRequest(
+            PRODUCT_SKU,
+            PRODUCT_NAME,
+            PRODUCT_COST,
+            PRODUCT_PRICE,
+            null,
+            PRODUCT_DESCRIPTION,
+            PRODUCT_BARCODE,
+            null,
+            null,
+            null);
     var productId = ProductId.generate();
     var productEntity = new Product(productId, PRODUCT_NAME, PRODUCT_DESCRIPTION);
     var productResponse = buildProductResponse(productId);
@@ -503,11 +619,21 @@ class CreateProductUseCaseTest {
     Mockito.verify(productApplicationMapper).toResponse(productEntity);
 
     Product savedProduct = productCaptor.getValue();
-    assertProductVariant(savedProduct, Sku.from(PRODUCT_SKU),
-        new Barcode(PRODUCT_BARCODE), Stock.empty(),
-        new Money(PRODUCT_COST), new Money(PRODUCT_PRICE), 0);
-    Mockito.verifyNoMoreInteractions(productRepository, brandRepository, categoryRepository,
-        propertyRepository, productApplicationMapper, dtoValidator);
+    assertProductVariant(
+        savedProduct,
+        Sku.from(PRODUCT_SKU),
+        new Barcode(PRODUCT_BARCODE),
+        Stock.empty(),
+        new Money(PRODUCT_COST),
+        new Money(PRODUCT_PRICE),
+        0);
+    Mockito.verifyNoMoreInteractions(
+        productRepository,
+        brandRepository,
+        categoryRepository,
+        propertyRepository,
+        productApplicationMapper,
+        dtoValidator);
   }
 
   @Test
@@ -521,47 +647,61 @@ class CreateProductUseCaseTest {
     Mockito.verify(dtoValidator).validate(Mockito.any(CreateProductRequest.class));
     Mockito.verify(productRepository).existsBySku(Mockito.any(Sku.class));
     Mockito.verify(productRepository, Mockito.never()).save(Mockito.any(Product.class));
-    Mockito.verifyNoMoreInteractions(productRepository, brandRepository, categoryRepository,
-        propertyRepository, productApplicationMapper, dtoValidator);
+    Mockito.verifyNoMoreInteractions(
+        productRepository,
+        brandRepository,
+        categoryRepository,
+        propertyRepository,
+        productApplicationMapper,
+        dtoValidator);
   }
 
   @Test
   @DisplayName("Should throw IllegalArgumentException when brand does not exist")
   void should_throw_exception_when_brand_does_not_exist() {
     var request = buildNewProductRequest(ProductOptionalData.builder().brandId(3).build());
-    Mockito.when(brandRepository.findById(Mockito.any(BrandId.class)))
-        .thenReturn(Optional.empty());
+    Mockito.when(brandRepository.findById(Mockito.any(BrandId.class))).thenReturn(Optional.empty());
 
-    IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-        () -> createProductUseCase.execute(request));
+    IllegalArgumentException ex =
+        assertThrows(IllegalArgumentException.class, () -> createProductUseCase.execute(request));
 
     assertTrue(ex.getMessage().contains("Brand not found"));
     Mockito.verify(dtoValidator).validate(Mockito.any(CreateProductRequest.class));
     Mockito.verify(productRepository).existsBySku(Mockito.any(Sku.class));
     Mockito.verify(brandRepository).findById(Mockito.any(BrandId.class));
     Mockito.verify(productRepository, Mockito.never()).save(Mockito.any(Product.class));
-    Mockito.verifyNoMoreInteractions(productRepository, brandRepository, categoryRepository,
-        propertyRepository, productApplicationMapper, dtoValidator);
+    Mockito.verifyNoMoreInteractions(
+        productRepository,
+        brandRepository,
+        categoryRepository,
+        propertyRepository,
+        productApplicationMapper,
+        dtoValidator);
   }
 
   @Test
   @DisplayName("Should throw IllegalArgumentException when category does not exist")
   void should_throw_exception_when_category_does_not_exist() {
     Set<Integer> categories = Set.of(1);
-    var request = buildNewProductRequest(
-        ProductOptionalData.builder().categories(categories).build());
+    var request =
+        buildNewProductRequest(ProductOptionalData.builder().categories(categories).build());
     Mockito.when(categoryRepository.findById(Mockito.any(CategoryId.class)))
         .thenReturn(Optional.empty());
 
-    IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-        () -> createProductUseCase.execute(request));
+    IllegalArgumentException ex =
+        assertThrows(IllegalArgumentException.class, () -> createProductUseCase.execute(request));
 
     assertTrue(ex.getMessage().contains("Category not found"));
     Mockito.verify(dtoValidator).validate(Mockito.any(CreateProductRequest.class));
     Mockito.verify(productRepository).existsBySku(Mockito.any(Sku.class));
     Mockito.verify(categoryRepository).findById(Mockito.any(CategoryId.class));
     Mockito.verify(productRepository, Mockito.never()).save(Mockito.any(Product.class));
-    Mockito.verifyNoMoreInteractions(productRepository, brandRepository, categoryRepository,
-        propertyRepository, productApplicationMapper, dtoValidator);
+    Mockito.verifyNoMoreInteractions(
+        productRepository,
+        brandRepository,
+        categoryRepository,
+        propertyRepository,
+        productApplicationMapper,
+        dtoValidator);
   }
 }

@@ -16,10 +16,9 @@ import org.josiasguerrero.products.application.mapper.ProductApplicationMapper;
 import org.josiasguerrero.products.application.usecase.Product.UpdateProductVariantUseCase;
 import org.josiasguerrero.products.domain.entity.Product;
 import org.josiasguerrero.products.domain.entity.ProductVariant;
-import org.josiasguerrero.products.domain.entity.Property;
 import org.josiasguerrero.products.domain.exception.DuplicateSkuException;
 import org.josiasguerrero.products.domain.port.ProductRepository;
-import org.josiasguerrero.products.domain.port.PropertyRepository;
+import org.josiasguerrero.products.domain.port.PropertyDomainService;
 import org.josiasguerrero.products.domain.valueobject.Barcode;
 import org.josiasguerrero.products.domain.valueobject.ProductId;
 import org.josiasguerrero.products.domain.valueobject.ProductVariantId;
@@ -42,7 +41,7 @@ class UpdateProductVariantUseCaseTest {
   @Mock
   private ProductRepository productRepository;
   @Mock
-  private PropertyRepository propertyRepository;
+  private PropertyDomainService propertyDomainService;
   @Mock
   private DtoValidator dtoValidator;
   @Mock
@@ -67,11 +66,9 @@ class UpdateProductVariantUseCaseTest {
         "SKU-NEW", "222222222222", new BigDecimal("12.0"), new BigDecimal("18.0"), 20, Map.of("size", "L")
     );
 
-    Property property = new Property(PropertyId.from(2), "size");
-
     when(productRepository.findById(productId)).thenReturn(Optional.of(product));
     when(productRepository.existsBySku(Sku.from("SKU-NEW"))).thenReturn(false);
-    when(propertyRepository.findByName("size")).thenReturn(Optional.of(property));
+    when(propertyDomainService.findOrCreateProperty("size")).thenReturn(PropertyId.from(2));
     when(productApplicationMapper.toResponse(product)).thenReturn(
         new ProductResponse(productId.value().toString(), "Product Name", "Product Description", null, Set.of(), Set.of(), LocalDateTime.now(), LocalDateTime.now())
     );

@@ -60,7 +60,6 @@ public class ProductController {
     @ApiResponse(responseCode = "400", description = "Invalid input data")
   })
   public ResponseEntity<ProductResponse> create(@Valid @RequestBody CreateProductRequest request) {
-    // TODO: Crear servicio de generador de sku
     ProductResponse response = createProductUseCase.execute(request);
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }

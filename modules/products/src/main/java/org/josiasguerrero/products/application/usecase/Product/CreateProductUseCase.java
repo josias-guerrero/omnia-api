@@ -1,6 +1,7 @@
 package org.josiasguerrero.products.application.usecase.Product;
 
 import java.util.HashSet;
+import java.util.Map;
 import lombok.AllArgsConstructor;
 import org.josiasguerrero.products.application.dto.request.CreateProductRequest;
 import org.josiasguerrero.products.application.dto.response.ProductResponse;
@@ -12,6 +13,7 @@ import org.josiasguerrero.products.domain.port.BrandRepository;
 import org.josiasguerrero.products.domain.port.CategoryRepository;
 import org.josiasguerrero.products.domain.port.ProductRepository;
 import org.josiasguerrero.products.domain.port.PropertyDomainService;
+import org.josiasguerrero.products.domain.port.SkuGeneratorPort;
 import org.josiasguerrero.products.domain.valueobject.Barcode;
 import org.josiasguerrero.products.domain.valueobject.BrandId;
 import org.josiasguerrero.products.domain.valueobject.CategoryId;
@@ -33,6 +35,7 @@ public class CreateProductUseCase {
   private final CategoryRepository categoryRepository;
   private final DtoValidator dtoValidator;
   private final ProductApplicationMapper productApplicationMapper;
+  private final SkuGeneratorPort skuGenerator;
 
   public ProductResponse execute(CreateProductRequest request) {
     dtoValidator.validate(request);
@@ -46,9 +49,11 @@ public class CreateProductUseCase {
   }
 
   private void validateBusinessRules(CreateProductRequest request) {
-    Sku sku = Sku.from(request.sku());
-    if (productRepository.existsBySku(sku)) {
-      throw new DuplicateSkuException(sku);
+    if (request.sku() != null) {
+      Sku sku = Sku.from(request.sku());
+      if (productRepository.existsBySku(sku)) {
+        throw new DuplicateSkuException(sku);
+      }
     }
 
     if (request.brandId() != null) {
@@ -71,13 +76,25 @@ public class CreateProductUseCase {
   private Product createProductEntity(CreateProductRequest request) {
     ProductId id = ProductId.generate();
     Product product = new Product(id, request.name(), request.description());
+    Sku sku;
+    String brandName = null;
 
     if (request.brandId() != null) {
-      product.assignToBrand(BrandId.from(request.brandId()));
+      BrandId brandId = BrandId.from(request.brandId());
+      brandName = brandRepository.findById(brandId).get().getName();
+      product.assignToBrand(brandId);
     }
 
     ProductVariantId variantId = ProductVariantId.generate();
-    Sku sku = Sku.from(request.sku());
+
+    if (request.sku() == null) {
+      Map<String, String> props =
+          request.properties() != null ? request.properties() : Map.of();
+      sku = generateUniqueSku(product, props, brandName);
+    } else {
+      sku = Sku.from(request.sku());
+    }
+
     Barcode barcode =
         request.barcode() != null && !request.barcode().isBlank()
             ? new Barcode(request.barcode())
@@ -91,6 +108,20 @@ public class CreateProductUseCase {
     product.getVariants().add(defaultVariant);
 
     return product;
+  }
+
+  private Sku generateUniqueSku(Product product, Map<String, String> properties, String brandName) {
+    Sku base = skuGenerator.generateSku(product, properties, brandName);
+    if (!productRepository.existsBySku(base)) {
+      return base;
+    }
+    for (int i = 1; i <= 999; i++) {
+      Sku candidate = Sku.from(base.value() + "-" + i);
+      if (!productRepository.existsBySku(candidate)) {
+        return candidate;
+      }
+    }
+    throw new IllegalStateException("Could not generate unique SKU after 999 attempts");
   }
 
   private void assignRelations(Product product, CreateProductRequest request) {

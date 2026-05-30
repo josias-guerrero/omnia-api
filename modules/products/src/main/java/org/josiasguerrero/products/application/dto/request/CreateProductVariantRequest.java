@@ -1,7 +1,7 @@
 package org.josiasguerrero.products.application.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotBlank;
+import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -11,8 +11,8 @@ import java.util.Map;
 
 @Schema(description = "Request payload for creating a new product variant")
 public record CreateProductVariantRequest(
-    @NotBlank(message = "SKU is required")
-        @Size(max = 50, message = "SKU cannot exceed 50 characters")
+    @Nullable
+        @Size(min = 1, max = 50, message = "SKU cannot exceed 50 characters")
         @Schema(description = "Unique SKU code", example = "SKU-001-RED", maxLength = 50)
         String sku,
     @Size(max = 50, message = "Barcode cannot exceed 50 characters")
